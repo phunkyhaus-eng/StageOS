@@ -9,8 +9,29 @@ fi
 missing=()
 invalid_format=()
 
+normalize_value() {
+  local value="$1"
+
+  # Trim surrounding whitespace first.
+  value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+  # Unwrap common copy/paste wrappers around secret values.
+  if [[ "$value" == \"*\" && "$value" == *\" && ${#value} -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  if [[ "$value" == \'*\' && "$value" == *\' && ${#value} -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  if [[ "$value" == \<* && "$value" == *\> && ${#value} -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+
+  printf '%s' "$value"
+}
+
 for var_name in "$@"; do
   value="${!var_name:-}"
+  value="$(normalize_value "$value")"
   if [ -z "$value" ]; then
     missing+=("$var_name")
     continue
