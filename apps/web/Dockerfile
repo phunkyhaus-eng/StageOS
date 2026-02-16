@@ -3,12 +3,15 @@ WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
 RUN corepack pnpm install --frozen-lockfile
 
 FROM node:20-alpine AS build
 WORKDIR /app
 RUN corepack enable
-COPY --from=deps /app/node_modules ./node_modules
+# Copy full installed workspace (including per-package node_modules links)
+# so shared package dependencies resolve during Next.js build.
+COPY --from=deps /app/ ./
 COPY . .
 RUN corepack pnpm --filter @stageos/web build
 
