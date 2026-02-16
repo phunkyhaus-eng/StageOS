@@ -5,6 +5,19 @@ Configure two GitHub environments in the repository:
 - `staging`
 - `production`
 
+## Free-tier profile (Render-first)
+
+For the current free-tier deployment target, you only need:
+
+- `DATABASE_URL`
+- `RENDER_API_DEPLOY_HOOK_URL`
+- `RENDER_WEB_DEPLOY_HOOK_URL`
+- `RENDER_WORKER_DEPLOY_HOOK_URL` (if deploying worker via hook)
+- `STAGING_WEB_BASE_URL` (staging only)
+- `STAGING_API_BASE_URL` (staging only)
+
+You do not need any AWS/ECS secrets unless you intentionally use the optional AWS workflows.
+
 Recommended protection rules:
 
 - required reviewers for `production`
@@ -27,20 +40,20 @@ Set these as **environment secrets** for both `staging` and `production` unless 
 
 | Secret | Required by | Description |
 | --- | --- | --- |
-| `RENDER_API_DEPLOY_HOOK_URL` | `staging-preflight.yml`, `staging-one-click.yml` (`provider=render`) | Render deploy hook URL for API service. |
-| `RENDER_WEB_DEPLOY_HOOK_URL` | `staging-preflight.yml`, `staging-one-click.yml` (`provider=render`) | Render deploy hook URL for web service. |
-| `RENDER_WORKER_DEPLOY_HOOK_URL` | `staging-one-click.yml` (`provider=render`, `trigger_worker=true`) | Render deploy hook URL for worker service. |
+| `RENDER_API_DEPLOY_HOOK_URL` | `staging-preflight.yml`, `staging-one-click.yml` | Render deploy hook URL for API service. |
+| `RENDER_WEB_DEPLOY_HOOK_URL` | `staging-preflight.yml`, `staging-one-click.yml` | Render deploy hook URL for web service. |
+| `RENDER_WORKER_DEPLOY_HOOK_URL` | `staging-one-click.yml` (`trigger_worker=true`) | Render deploy hook URL for worker service. |
 
-### AWS ECS profile
+### AWS ECS profile (optional/non-free)
 
 | Secret | Required by | Description |
 | --- | --- | --- |
-| `AWS_REGION` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | AWS region (for example `us-east-1`). |
-| `AWS_DEPLOY_ROLE_ARN` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | IAM role ARN for GitHub OIDC deployment auth. |
-| `ECS_CLUSTER_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS cluster name to deploy into. |
-| `ECS_API_SERVICE_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS service name for StageOS API. |
-| `ECS_WEB_SERVICE_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS service name for StageOS web app. |
-| `ECS_WORKER_SERVICE_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS service name for StageOS worker. |
+| `AWS_REGION` | `deploy-ecs.yml` | AWS region (for example `us-east-1`). |
+| `AWS_DEPLOY_ROLE_ARN` | `deploy-ecs.yml` | IAM role ARN for GitHub OIDC deployment auth. |
+| `ECS_CLUSTER_NAME` | `deploy-ecs.yml` | ECS cluster name to deploy into. |
+| `ECS_API_SERVICE_NAME` | `deploy-ecs.yml` | ECS service name for StageOS API. |
+| `ECS_WEB_SERVICE_NAME` | `deploy-ecs.yml` | ECS service name for StageOS web app. |
+| `ECS_WORKER_SERVICE_NAME` | `deploy-ecs.yml` | ECS service name for StageOS worker. |
 
 ## OIDC trust policy baseline
 
@@ -63,8 +76,8 @@ Grant this role least-privilege access for:
 - `migrate-database.yml` -> selected `target_env`
 - `release-gates.yml` -> selected `target_env`
 - `deploy-ecs.yml` -> selected `target_env`
-- `staging-one-click.yml` -> environment `staging` (`provider` input, default `render`)
-- `staging-preflight.yml` -> environment `staging` (`provider` input, default `render`)
+- `staging-one-click.yml` -> environment `staging` (Render free-tier flow)
+- `staging-preflight.yml` -> environment `staging` (Render free-tier flow)
 
 ## Example values
 
@@ -77,7 +90,7 @@ Grant this role least-privilege access for:
 - `STAGING_WEB_BASE_URL=https://staging.stageos.app`
 - `STAGING_API_BASE_URL=https://api-staging.stageos.app`
 
-### staging (AWS ECS)
+### staging (AWS ECS, optional)
 
 - `DATABASE_URL=postgresql://stageos:***@staging-db.example:5432/stageos?schema=public`
 - `AWS_REGION=us-east-1`

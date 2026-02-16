@@ -1,11 +1,23 @@
 # StageOS Deployment Guide
 
-This guide covers production deployment for:
+This guide covers deployment for:
 
-- Railway
-- Fly.io
-- Render
-- AWS ECS (Fargate)
+- Render (free-tier default)
+- Railway (optional)
+- Fly.io (optional)
+- AWS ECS (optional, non-free)
+
+## Free-tier default profile
+
+Use this profile while keeping all hosting/backends on free tiers:
+
+1. Render Web Service: `stageos-api` (`apps/api/Dockerfile`)
+2. Render Web Service: `stageos-web` (`apps/web/Dockerfile`)
+3. Render Background Worker: `stageos-worker` (`apps/api/Dockerfile`, `node dist/apps/api/src/worker.js`)
+4. Render Postgres: free plan
+5. Render Key Value (Valkey/Redis): free plan
+6. Mail provider: `MAIL_PROVIDER=console` (no paid email provider required in MVP)
+7. Billing provider: Stripe env vars left empty unless you intentionally enable billing
 
 ## Runtime topology
 
@@ -47,6 +59,9 @@ Set these in each platform:
 - `JWT_ISSUER=stageos`
 - `COOKIE_SECURE=true`
 - `ENCRYPTION_KEY=<32+ chars>`
+- `MAIL_PROVIDER=console`
+- `MAIL_FROM=noreply@stageos.local`
+- `STAFFING_OFFER_EXPIRY_HOURS=12`
 - `S3_ENDPOINT=https://...`
 - `S3_PUBLIC_ENDPOINT=https://...`
 - `S3_REGION=...`
@@ -84,17 +99,15 @@ One-click option in GitHub Actions:
 - Ensure environment-scoped `DATABASE_URL` secret is configured
 - Environment secret matrix: `docs/GITHUB_ENVIRONMENTS.md`
 
-Fastest staging path:
+Fastest staging path (free profile):
 
 - Run `.github/workflows/staging-one-click.yml`
-- Default provider is `render`: it builds and pushes images, optionally runs migrations, triggers Render deploy hooks, and can run smoke checks
-- For AWS ECS, set workflow input `provider=aws`
+- It builds and pushes images, optionally runs migrations, triggers Render deploy hooks, and runs optional smoke checks
 
 Recommended before first staging cut:
 
 - Run `.github/workflows/staging-preflight.yml`
-- Default provider is `render`: confirms required Render hook secrets and endpoint reachability
-- For AWS ECS, set workflow input `provider=aws`
+- It validates required Render hook secrets and endpoint reachability
 
 ## Railway
 
@@ -144,11 +157,11 @@ Use committed Fly configs:
 
 Create services:
 
-1. Web service (`apps/web/Dockerfile`)
-2. Private service for API (`apps/api/Dockerfile`, start `node dist/apps/api/src/main.js`)
-3. Private service for worker (`apps/api/Dockerfile`, start `node dist/apps/api/src/worker.js`)
-4. Managed Postgres database
-5. Managed Redis instance
+1. Web service (`apps/api/Dockerfile`, start `node dist/apps/api/src/main.js`, health `/api/health`, plan `free`)
+2. Web service (`apps/web/Dockerfile`, plan `free`)
+3. Background worker (`apps/api/Dockerfile`, command `node dist/apps/api/src/worker.js`, plan `free`)
+4. Managed Postgres database (plan `free`)
+5. Managed Key Value (Valkey/Redis) instance (plan `free`)
 
 Set all env vars in each service and run Prisma migrations as a deploy hook or one-off job.
 
@@ -156,7 +169,7 @@ Use committed Render blueprint:
 
 - `deploy/render/render.yaml`
 
-## AWS ECS (Fargate)
+## AWS ECS (Fargate, optional/non-free)
 
 Recommended layout:
 

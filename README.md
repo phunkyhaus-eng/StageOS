@@ -16,6 +16,18 @@ StageOS is built as an offline-first, multi-tenant platform centered on the **Ev
 - White-label branding profiles per organisation
 - Web PWA + mobile (Expo) with shared offline business logic
 
+## Free-tier mode (default for now)
+
+StageOS is currently configured to run with free hosting/backends by default:
+
+- Render free web service for `stageos-api`
+- Render free web service for `stageos-web`
+- Render free background worker for `stageos-worker`
+- Render free Postgres
+- Render free Key Value (Valkey/Redis)
+- `MAIL_PROVIDER=console` (email actions logged to server output in non-production mail mode)
+- Stripe keys optional and disabled unless explicitly configured
+
 ## Monorepo structure
 
 ```text
@@ -94,6 +106,25 @@ corepack pnpm test:e2e
 corepack pnpm build
 ```
 
+## Calendar workflow (band operations)
+
+- Open `/events` for Day/Week/Month/Agenda views.
+- Click empty cells/timeline to quick-create entries; drag events to move; drag bottom handle to resize.
+- Use event types for band workflows:
+  - `GIG`, `REHEARSAL`, `TRAVEL`, `HOLD`, `PROMO`, `RECORDING`, `DEADLINE`.
+- Use booking statuses for hold funnel and fulfillment:
+  - `HOLD`, `TENTATIVE`, `CONFIRMED`, `COMPLETED`, `CANCELLED` (plus legacy `PLANNED` compatibility).
+- In event edit modal:
+  - GIG: fill call-sheet fields (venue/map, client, contacts, timing blocks, lineup/deps, attachment references).
+  - REHEARSAL: objective, required lineup, location, duration.
+  - TRAVEL: origin/destination, depart/arrive, travel notes.
+- Availability:
+  - Create an availability request from the event modal.
+  - Set per-member availability (`AVAILABLE/YES`, `MAYBE`, `UNAVAILABLE/NO`) and optional reason.
+- Conflict interpretation:
+  - Warning badges indicate unavailable members, double-bookings, and travel overlaps.
+  - Conflict details appear inside the event modal under **Conflicts**.
+
 ## CI/CD
 
 - `CI` workflow:
@@ -112,9 +143,9 @@ corepack pnpm build
 - `Deploy ECS` workflow:
   - optional migration run + rolling ECS deployment for API/web/worker
 - `Staging One-Click Release` workflow:
-  - build/push staging images + optional migrations + ECS rollout + optional smoke checks
+  - build/push staging images + optional migrations + Render deploy hooks + optional smoke checks
 - `Staging Preflight` workflow:
-  - validates staging secrets + ECS targets + endpoint reachability before release
+  - validates staging Render secrets + endpoint reachability before release
 
 ## Deployment
 

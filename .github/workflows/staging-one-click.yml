@@ -3,14 +3,6 @@ name: Staging One-Click Release
 on:
   workflow_dispatch:
     inputs:
-      provider:
-        description: Deployment provider
-        required: true
-        default: render
-        type: choice
-        options:
-          - render
-          - aws
       release_tag:
         description: Release tag (for example 2026-02-16.1)
         required: true
@@ -106,12 +98,6 @@ jobs:
 
       - name: Validate staging deployment secrets
         env:
-          AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
-          ECS_API_SERVICE_NAME: ${{ secrets.ECS_API_SERVICE_NAME }}
-          ECS_WEB_SERVICE_NAME: ${{ secrets.ECS_WEB_SERVICE_NAME }}
-          ECS_WORKER_SERVICE_NAME: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           STAGING_WEB_BASE_URL: ${{ secrets.STAGING_WEB_BASE_URL }}
           STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
@@ -119,35 +105,18 @@ jobs:
           RENDER_WEB_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL }}
           RENDER_WORKER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WORKER_DEPLOY_HOOK_URL }}
         run: |
-          if [ "${{ inputs.provider }}" = "aws" ]; then
-            required=(AWS_DEPLOY_ROLE_ARN AWS_REGION ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME)
-            if [ "${{ inputs.run_migrations }}" = "true" ]; then
-              required+=(DATABASE_URL)
-            fi
-            if [ "${{ inputs.run_smoke_checks }}" = "true" ]; then
-              required+=(STAGING_WEB_BASE_URL STAGING_API_BASE_URL)
-            fi
-          else
-            required=(RENDER_API_DEPLOY_HOOK_URL RENDER_WEB_DEPLOY_HOOK_URL)
-            if [ "${{ inputs.trigger_worker }}" = "true" ]; then
-              required+=(RENDER_WORKER_DEPLOY_HOOK_URL)
-            fi
-            if [ "${{ inputs.run_migrations }}" = "true" ]; then
-              required+=(DATABASE_URL)
-            fi
-            if [ "${{ inputs.run_smoke_checks }}" = "true" ]; then
-              required+=(STAGING_WEB_BASE_URL STAGING_API_BASE_URL)
-            fi
+          required=(RENDER_API_DEPLOY_HOOK_URL RENDER_WEB_DEPLOY_HOOK_URL)
+          if [ "${{ inputs.trigger_worker }}" = "true" ]; then
+            required+=(RENDER_WORKER_DEPLOY_HOOK_URL)
+          fi
+          if [ "${{ inputs.run_migrations }}" = "true" ]; then
+            required+=(DATABASE_URL)
+          fi
+          if [ "${{ inputs.run_smoke_checks }}" = "true" ]; then
+            required+=(STAGING_WEB_BASE_URL STAGING_API_BASE_URL)
           fi
 
           ./tools/check_required_env.sh "${required[@]}"
-
-      - name: Configure AWS credentials
-        if: ${{ inputs.provider == 'aws' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup pnpm
         if: ${{ inputs.run_migrations }}
@@ -172,19 +141,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: corepack pnpm --filter @stageos/api exec prisma migrate deploy --schema prisma/schema.prisma
 
-      - name: Roll ECS services
-        if: ${{ inputs.provider == 'aws' }}
-        env:
-          CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
-          API_SERVICE: ${{ secrets.ECS_API_SERVICE_NAME }}
-          WEB_SERVICE: ${{ secrets.ECS_WEB_SERVICE_NAME }}
-          WORKER_SERVICE: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
-          API_IMAGE_URI: ${{ needs.build-and-push.outputs.api_image_uri }}
-          WEB_IMAGE_URI: ${{ needs.build-and-push.outputs.web_image_uri }}
-        run: ./tools/ecs_rollout.sh
-
       - name: Trigger Render deploy hooks
-        if: ${{ inputs.provider == 'render' }}
         env:
           RENDER_API_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
           RENDER_WEB_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL }}
@@ -202,23 +159,12 @@ jobs:
           API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
         run: ./tools/smoke_check.sh
 
-      - name: Post-deploy ECS status
-        if: ${{ inputs.provider == 'aws' }}
-        env:
-          CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
-          API_SERVICE: ${{ secrets.ECS_API_SERVICE_NAME }}
-          WEB_SERVICE: ${{ secrets.ECS_WEB_SERVICE_NAME }}
-          WORKER_SERVICE: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
-        run: |
-          aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$API_SERVICE" "$WEB_SERVICE" "$WORKER_SERVICE" \
-            --query 'services[*].{name:serviceName,status:status,desired:desiredCount,running:runningCount}' --output table
-
       - name: Summary
         run: |
           {
             echo "## Staging one-click release complete"
             echo ""
-            echo "- Provider: \`${{ inputs.provider }}\`"
+            echo "- Provider: \`render\` (free-tier default)"
             echo "- API image: \`${{ needs.build-and-push.outputs.api_image_uri }}\`"
             echo "- Web image: \`${{ needs.build-and-push.outputs.web_image_uri }}\`"
             echo "- Migrations executed: \`${{ inputs.run_migrations }}\`"

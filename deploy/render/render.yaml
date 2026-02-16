@@ -2,13 +2,13 @@ databases:
   - name: stageos-postgres
     databaseName: stageos
     user: stageos
-    plan: starter
+    plan: free
 
 services:
   - type: redis
     name: stageos-redis
     ipAllowList: []
-    plan: starter
+    plan: free
     maxmemoryPolicy: allkeys-lru
 
   - type: web
@@ -16,7 +16,7 @@ services:
     runtime: docker
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    plan: starter
+    plan: free
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -89,7 +89,7 @@ services:
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     dockerCommand: node dist/apps/api/src/worker.js
-    plan: starter
+    plan: free
     envVars:
       - key: NODE_ENV
         value: production
@@ -150,7 +150,7 @@ services:
     runtime: docker
     dockerfilePath: ./apps/web/Dockerfile
     dockerContext: .
-    plan: starter
+    plan: free
     envVars:
       - key: NODE_ENV
         value: production

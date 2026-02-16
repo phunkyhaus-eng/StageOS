@@ -8,6 +8,14 @@ This directory contains platform-ready deployment manifests:
 - `deploy/aws/ecs/*.json`: ECS Fargate task definitions
 - `deploy/aws/terraform/*`: Terraform stack (ECS, ALB, RDS, Redis, S3, Secrets Manager)
 
+Free-tier default profile (current recommended path):
+
+- Render free web service for API
+- Render free web service for web
+- Render free background worker
+- Render free Postgres
+- Render free Key Value (Valkey/Redis)
+
 All manifests assume this service split:
 
 1. API (`node dist/apps/api/src/main.js`)

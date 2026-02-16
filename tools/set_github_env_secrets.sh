@@ -85,7 +85,7 @@ if [ -z "$deploy_target" ]; then
   elif [ -n "${AWS_DEPLOY_ROLE_ARN:-}" ] || [ -n "${ECS_CLUSTER_NAME:-}" ]; then
     deploy_target="aws"
   else
-    deploy_target="aws"
+    deploy_target="render"
   fi
 fi
 
