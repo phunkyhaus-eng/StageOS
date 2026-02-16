@@ -1,7 +1,19 @@
 import type { Metadata, Viewport } from 'next';
-import { StageOSQueryProvider } from '@/components/providers/query-provider';
+import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
+import { StageOsQueryProvider } from '@/components/providers/query-provider';
 import { PwaRegister } from '@/components/providers/pwa-register';
 import './globals.css';
+
+const sans = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-stageos-sans'
+});
+
+const mono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '600'],
+  variable: '--font-stageos-mono'
+});
 
 export const metadata: Metadata = {
   title: 'StageOS',
@@ -25,11 +37,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className="stageos-body">
-        <StageOSQueryProvider>
+      <body className={`${sans.variable} ${mono.variable} stageos-body`}>
+        <StageOsQueryProvider>
           <PwaRegister />
           {children}
-        </StageOSQueryProvider>
+        </StageOsQueryProvider>
       </body>
     </html>
   );

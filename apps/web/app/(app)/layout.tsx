@@ -1,5 +1,5 @@
 import { AppShell } from '@/components/shell/app-shell';
 
-export default function StageOSLayout({ children }: { children: React.ReactNode }) {
+export default function StageOsLayout({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }

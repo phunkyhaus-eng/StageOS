@@ -14,5 +14,4 @@ apps/mobile/ios
 apps/api/prisma/dev.db
 apps/web/playwright-report
 apps/web/test-results
-deploy/secrets/*.local
 .DS_Store
