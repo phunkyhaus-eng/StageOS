@@ -11,8 +11,8 @@ This guide covers production deployment for:
 
 Deploy StageOS as three stateless services:
 
-1. `api`: NestJS HTTP API (`node dist/main.js`)
-2. `worker`: BullMQ consumer (`node dist/worker.js`)
+1. `api`: NestJS HTTP API (`node dist/apps/api/src/main.js`)
+2. `worker`: BullMQ consumer (`node dist/apps/api/src/worker.js`)
 3. `web`: Next.js frontend (`node apps/web/server.js`)
 
 Managed dependencies:
@@ -99,8 +99,8 @@ Recommended before first staging cut:
 1. Create a Railway project.
 2. Provision PostgreSQL + Redis plugins.
 3. Create three services from repo:
-   - API service: Dockerfile `apps/api/Dockerfile`, start command `node dist/main.js`.
-   - Worker service: Dockerfile `apps/api/Dockerfile`, start command `node dist/worker.js`.
+   - API service: Dockerfile `apps/api/Dockerfile`, start command `node dist/apps/api/src/main.js`.
+   - Worker service: Dockerfile `apps/api/Dockerfile`, start command `node dist/apps/api/src/worker.js`.
    - Web service: Dockerfile `apps/web/Dockerfile`.
 4. Set service env vars listed above.
 5. Add a pre-deploy migration command (or one-off job) for Prisma migrate deploy.
@@ -126,7 +126,7 @@ Deploy commands:
 
 ```bash
 fly deploy --app stageos-api --dockerfile apps/api/Dockerfile
-fly deploy --app stageos-worker --dockerfile apps/api/Dockerfile --command "node dist/worker.js"
+fly deploy --app stageos-worker --dockerfile apps/api/Dockerfile --command "node dist/apps/api/src/worker.js"
 fly deploy --app stageos-web --dockerfile apps/web/Dockerfile
 ```
 
@@ -143,8 +143,8 @@ Use committed Fly configs:
 Create services:
 
 1. Web service (`apps/web/Dockerfile`)
-2. Private service for API (`apps/api/Dockerfile`, start `node dist/main.js`)
-3. Private service for worker (`apps/api/Dockerfile`, start `node dist/worker.js`)
+2. Private service for API (`apps/api/Dockerfile`, start `node dist/apps/api/src/main.js`)
+3. Private service for worker (`apps/api/Dockerfile`, start `node dist/apps/api/src/worker.js`)
 4. Managed Postgres database
 5. Managed Redis instance
 

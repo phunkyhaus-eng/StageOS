@@ -1,5 +1,21 @@
 import { PrismaClient, LeadStage, RoleName, EventType, EventStatus, PayoutType, AvailabilityStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { config as loadEnv } from 'dotenv';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const envCandidates = [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), 'apps/api/.env'),
+  resolve(__dirname, '../.env'),
+  resolve(__dirname, '../../.env')
+];
+
+for (const envPath of envCandidates) {
+  if (existsSync(envPath)) {
+    loadEnv({ path: envPath, override: false });
+  }
+}
 
 const prisma = new PrismaClient();
 

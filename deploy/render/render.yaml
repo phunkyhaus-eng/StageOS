@@ -1,0 +1,160 @@
+databases:
+  - name: stageos-postgres
+    databaseName: stageos
+    user: stageos
+    plan: starter
+
+services:
+  - type: redis
+    name: stageos-redis
+    ipAllowList: []
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+
+  - type: web
+    name: stageos-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 4000
+      - key: QUEUE_PROCESSOR_ENABLED
+        value: false
+      - key: APP_URL
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stageos-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: stageos-redis
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ISSUER
+        value: stageos
+      - key: COOKIE_SECURE
+        value: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: RATE_LIMIT_TTL_SECONDS
+        value: 60
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 120
+      - key: DEFAULT_RETENTION_DAYS
+        value: 90
+      - key: GRACE_PERIOD_DAYS
+        value: 7
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        value: stageos-assets
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        value: false
+      - key: FILE_MAX_BYTES
+        value: 26214400
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
+      - key: STRIPE_PRICE_TOURING_PRO
+        sync: false
+      - key: MOBILE_APP_SCHEME
+        value: stageos://
+
+  - type: worker
+    name: stageos-worker
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/apps/api/src/worker.js
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: QUEUE_PROCESSOR_ENABLED
+        value: true
+      - key: QUEUE_WEBHOOK_CONCURRENCY
+        value: 10
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stageos-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: stageos-redis
+          property: connectionString
+      - key: APP_URL
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ISSUER
+        value: stageos
+      - key: COOKIE_SECURE
+        value: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: RATE_LIMIT_TTL_SECONDS
+        value: 60
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 120
+      - key: DEFAULT_RETENTION_DAYS
+        value: 90
+      - key: GRACE_PERIOD_DAYS
+        value: 7
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        value: stageos-assets
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        value: false
+      - key: FILE_MAX_BYTES
+        value: 26214400
+
+  - type: web
+    name: stageos-web
+    runtime: docker
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        sync: false

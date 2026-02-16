@@ -28,4 +28,4 @@ COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
 WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/apps/api/src/main.js"]
