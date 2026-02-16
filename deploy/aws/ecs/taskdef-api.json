@@ -1,0 +1,72 @@
+{
+  "family": "stageos-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/stageos-ecs-task-exec",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/stageos-api-task",
+  "containerDefinitions": [
+    {
+      "name": "stageos-api",
+      "image": "ghcr.io/ORG/REPO/stageos-api:production",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 4000,
+          "hostPort": 4000,
+          "protocol": "tcp"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -q -O - http://127.0.0.1:4000/api/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "API_PORT", "value": "4000" },
+        { "name": "QUEUE_PROCESSOR_ENABLED", "value": "false" },
+        { "name": "JWT_ISSUER", "value": "stageos" },
+        { "name": "COOKIE_SECURE", "value": "true" },
+        { "name": "S3_BUCKET", "value": "stageos-assets" },
+        { "name": "S3_FORCE_PATH_STYLE", "value": "false" },
+        { "name": "FILE_MAX_BYTES", "value": "26214400" },
+        { "name": "RATE_LIMIT_TTL_SECONDS", "value": "60" },
+        { "name": "RATE_LIMIT_PER_MINUTE", "value": "120" },
+        { "name": "DEFAULT_RETENTION_DAYS", "value": "90" },
+        { "name": "GRACE_PERIOD_DAYS", "value": "7" },
+        { "name": "MOBILE_APP_SCHEME", "value": "stageos://" }
+      ],
+      "secrets": [
+        { "name": "APP_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/app_url" },
+        { "name": "API_BASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/api_base_url" },
+        { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/database_url" },
+        { "name": "READ_DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/read_database_url" },
+        { "name": "REDIS_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/redis_url" },
+        { "name": "JWT_ACCESS_SECRET", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/jwt_access_secret" },
+        { "name": "JWT_REFRESH_SECRET", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/jwt_refresh_secret" },
+        { "name": "ENCRYPTION_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/encryption_key" },
+        { "name": "STRIPE_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/stripe_secret_key" },
+        { "name": "STRIPE_WEBHOOK_SECRET", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/stripe_webhook_secret" },
+        { "name": "STRIPE_PRICE_PRO", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/stripe_price_pro" },
+        { "name": "STRIPE_PRICE_TOURING_PRO", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/stripe_price_touring_pro" },
+        { "name": "S3_ENDPOINT", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/s3_endpoint" },
+        { "name": "S3_PUBLIC_ENDPOINT", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/s3_public_endpoint" },
+        { "name": "S3_REGION", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/s3_region" },
+        { "name": "S3_ACCESS_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/s3_access_key" },
+        { "name": "S3_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/s3_secret_key" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/stageos-api",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

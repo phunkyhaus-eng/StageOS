@@ -1,0 +1,45 @@
+{
+  "family": "stageos-web",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/stageos-ecs-task-exec",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/stageos-web-task",
+  "containerDefinitions": [
+    {
+      "name": "stageos-web",
+      "image": "ghcr.io/ORG/REPO/stageos-web:production",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "3000" }
+      ],
+      "secrets": [
+        { "name": "NEXT_PUBLIC_API_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:stageos/next_public_api_url" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/stageos-web",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

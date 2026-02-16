@@ -29,6 +29,6 @@ curl_with_retry() {
 
 curl_with_retry "${WEB_BASE_URL}/" "web root" "StageOS|<!doctype html>|<html"
 curl_with_retry "${API_BASE_URL}/api/health" "api health" "ok|healthy|status"
-curl_with_retry "${API_BASE_URL}/metrics" "api metrics" "^# HELP|process_cpu_user_seconds_total"
+curl_with_retry "${API_BASE_URL}/api/metrics" "api metrics" "^# HELP|process_cpu_user_seconds_total"
 
 echo "Smoke checks passed."

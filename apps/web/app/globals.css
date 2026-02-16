@@ -24,7 +24,7 @@ body {
   min-height: 100vh;
   background: var(--stageos-bg);
   color: #e2e8f0;
-  font-family: var(--font-stageos-sans), ui-sans-serif, system-ui;
+  font-family: 'Avenir Next', 'Avenir', 'Trebuchet MS', 'Segoe UI', sans-serif;
   text-rendering: optimizeLegibility;
 }
 
@@ -32,7 +32,7 @@ code,
 pre,
 kbd,
 samp {
-  font-family: var(--font-stageos-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: 'IBM Plex Mono', 'Cascadia Mono', 'SFMono-Regular', Menlo, monospace;
 }
 
 input,
