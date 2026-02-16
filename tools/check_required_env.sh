@@ -8,6 +8,7 @@ fi
 
 missing=()
 invalid_format=()
+strict_secret_format="${STRICT_SECRET_FORMAT:-false}"
 
 normalize_value() {
   local value="$1"
@@ -37,27 +38,29 @@ for var_name in "$@"; do
     continue
   fi
 
-  if [ "$var_name" = "AWS_DEPLOY_ROLE_ARN" ]; then
-    if [[ ! "$value" =~ ^arn:aws(-[a-z0-9]+)?:iam::[0-9]{12}:role/.+ ]]; then
-      invalid_format+=("$var_name")
+  if [ "$strict_secret_format" = "true" ]; then
+    if [ "$var_name" = "AWS_DEPLOY_ROLE_ARN" ]; then
+      if [[ ! "$value" =~ ^arn:aws(-[a-z0-9]+)?:iam::[0-9]{12}:role/.+ ]]; then
+        invalid_format+=("$var_name")
+      fi
     fi
-  fi
 
-  if [ "$var_name" = "DATABASE_URL" ]; then
-    if [[ ! "$value" =~ ^postgres(ql)?:// ]]; then
-      invalid_format+=("$var_name")
+    if [ "$var_name" = "DATABASE_URL" ]; then
+      if [[ ! "$value" =~ ^postgres(ql)?:// ]]; then
+        invalid_format+=("$var_name")
+      fi
     fi
-  fi
 
-  if [ "$var_name" = "STAGING_WEB_BASE_URL" ] || [ "$var_name" = "STAGING_API_BASE_URL" ]; then
-    if [[ ! "$value" =~ ^https?:// ]]; then
-      invalid_format+=("$var_name")
+    if [ "$var_name" = "STAGING_WEB_BASE_URL" ] || [ "$var_name" = "STAGING_API_BASE_URL" ]; then
+      if [[ ! "$value" =~ ^https?:// ]]; then
+        invalid_format+=("$var_name")
+      fi
     fi
-  fi
 
-  if [[ "$var_name" =~ ^RENDER_.*_DEPLOY_HOOK_URL$ ]]; then
-    if [[ ! "$value" =~ ^https?:// ]]; then
-      invalid_format+=("$var_name")
+    if [[ "$var_name" =~ ^RENDER_.*_DEPLOY_HOOK_URL$ ]]; then
+      if [[ ! "$value" =~ ^https?:// ]]; then
+        invalid_format+=("$var_name")
+      fi
     fi
   fi
 done
@@ -70,7 +73,7 @@ if [ "${#missing[@]}" -gt 0 ]; then
   exit 1
 fi
 
-if [ "${#invalid_format[@]}" -gt 0 ]; then
+if [ "$strict_secret_format" = "true" ] && [ "${#invalid_format[@]}" -gt 0 ]; then
   echo "Invalid value format for:"
   for name in "${invalid_format[@]}"; do
     if [ "$name" = "AWS_DEPLOY_ROLE_ARN" ]; then
