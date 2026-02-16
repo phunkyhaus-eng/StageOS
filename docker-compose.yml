@@ -1,26 +1,39 @@
-version: '3.9'
 services:
   postgres:
     image: postgres:16-alpine
     container_name: stageos-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: stageos
     ports:
       - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d stageos']
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - pg_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
     container_name: stageos-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
       - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   minio:
     image: minio/minio:RELEASE.2025-01-18T00-31-37Z
     container_name: stageos-minio
+    restart: unless-stopped
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
@@ -31,27 +44,74 @@ services:
     volumes:
       - minio_data:/data
 
+  minio-init:
+    image: minio/mc:RELEASE.2025-01-17T23-25-50Z
+    container_name: stageos-minio-init
+    depends_on:
+      - minio
+    restart: on-failure
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minio minio123; do sleep 2; done &&
+      mc mb --ignore-existing local/stageos-assets &&
+      mc version enable local/stageos-assets
+      "
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     container_name: stageos-api
+    restart: unless-stopped
     env_file:
-      - .env.example
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/stageos?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      QUEUE_PROCESSOR_ENABLED: 'false'
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     ports:
       - '4000:4000'
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: stageos-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/stageos?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      QUEUE_PROCESSOR_ENABLED: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ['node', 'dist/worker.js']
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
     container_name: stageos-web
+    restart: unless-stopped
     env_file:
-      - .env.example
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
     depends_on:
       - api
     ports:

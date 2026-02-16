@@ -7,6 +7,10 @@ const config: Config = {
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: 'tsconfig.json' }]
   },
+  moduleNameMapper: {
+    '^@stageos/shared$': '<rootDir>/../../packages/shared/src/index.ts',
+    '^@stageos/shared/(.*)$': '<rootDir>/../../packages/shared/src/$1'
+  },
   collectCoverageFrom: ['src/**/*.(t|j)s'],
   coverageDirectory: '../coverage',
   testEnvironment: 'node'

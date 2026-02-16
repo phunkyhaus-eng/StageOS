@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="StageOS icon">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#04070d" />
+  <circle cx="256" cy="256" r="170" fill="none" stroke="url(#g)" stroke-width="28" />
+  <path d="M128 308c52-86 84-106 126-106 52 0 86 38 130 122" fill="none" stroke="#e2e8f0" stroke-width="22" stroke-linecap="round" />
+  <circle cx="256" cy="208" r="22" fill="#e2e8f0" />
+</svg>

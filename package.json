@@ -4,14 +4,20 @@
   "version": "1.0.0",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "pnpm --parallel --filter @stageos/api --filter @stageos/web dev",
-    "build": "pnpm -r build",
+    "dev": "corepack pnpm --parallel --filter @stageos/api --filter @stageos/web dev",
+    "build": "corepack pnpm -r --if-present build",
+    "dev:worker": "corepack pnpm --filter @stageos/api dev:worker",
     "lint": "corepack pnpm -r lint && node tools/check-stageos-branding.mjs",
     "brand:check": "node tools/check-stageos-branding.mjs",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "db:migrate": "pnpm --filter @stageos/api prisma:migrate",
-    "db:push": "pnpm --filter @stageos/api prisma:push",
-    "db:seed": "pnpm --filter @stageos/api prisma:seed"
+    "typecheck": "corepack pnpm -r typecheck",
+    "test": "corepack pnpm --filter @stageos/api test",
+    "test:unit": "corepack pnpm --filter @stageos/api test:unit",
+    "test:integration": "corepack pnpm --filter @stageos/api test:integration",
+    "test:e2e": "corepack pnpm --filter @stageos/web test:e2e",
+    "test:mobile": "corepack pnpm --filter @stageos/mobile test",
+    "test:shared": "corepack pnpm --filter @stageos/shared test",
+    "db:migrate": "corepack pnpm --filter @stageos/api prisma:migrate",
+    "db:push": "corepack pnpm --filter @stageos/api prisma:push",
+    "db:seed": "corepack pnpm --filter @stageos/api prisma:seed"
   }
 }

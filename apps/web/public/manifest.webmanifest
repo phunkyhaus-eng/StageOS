@@ -1,0 +1,23 @@
+{
+  "name": "StageOS",
+  "short_name": "StageOS",
+  "description": "Offline-first operating system for professional bands and touring teams",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#04070d",
+  "theme_color": "#0a1220",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

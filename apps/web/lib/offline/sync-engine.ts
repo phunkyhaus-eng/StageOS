@@ -1,6 +1,7 @@
 'use client';
 
 import { apiFetch } from '../api-client';
+import { createClientOperation, type OfflineEntity } from '@stageos/shared';
 import {
   countOfflineOperations,
   queueOfflineOperation,
@@ -25,7 +26,7 @@ function writeCursor(bandId: string, cursor: string | null) {
 }
 
 export async function queueLocalWrite(input: {
-  entity: string;
+  entity: OfflineEntity;
   operation: 'create' | 'update' | 'delete' | 'setlistOps';
   entityId: string;
   bandId: string;
@@ -33,10 +34,12 @@ export async function queueLocalWrite(input: {
   payload?: Record<string, unknown>;
   setlistOps?: Array<Record<string, unknown>>;
 }) {
-  await queueOfflineOperation({
-    ...input,
-    updatedAt: new Date().toISOString()
-  });
+  await queueOfflineOperation(
+    createClientOperation({
+      clientId: `${input.entity}:${input.entityId}:${Date.now()}`,
+      ...input
+    })
+  );
 
   return countOfflineOperations();
 }

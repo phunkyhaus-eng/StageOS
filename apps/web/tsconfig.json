@@ -25,6 +25,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@stageos/shared": [
+        "../../packages/shared/src"
+      ],
+      "@stageos/shared/*": [
+        "../../packages/shared/src/*"
       ]
     },
     "incremental": true

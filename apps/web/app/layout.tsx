@@ -25,8 +25,8 @@ export const metadata: Metadata = {
     title: 'StageOS'
   },
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png'
+    icon: '/icons/icon.svg',
+    apple: '/icons/icon.svg'
   }
 };
 

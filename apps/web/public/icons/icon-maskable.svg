@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="StageOS maskable icon">
+  <rect width="512" height="512" fill="#04070d" />
+  <rect x="56" y="56" width="400" height="400" rx="96" fill="#0a1220" stroke="#38bdf8" stroke-width="18" />
+  <path d="M156 330V182h46l56 78 56-78h46v148h-46v-77l-56 74-56-74v77z" fill="#e2e8f0" />
+</svg>

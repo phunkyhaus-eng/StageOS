@@ -34,6 +34,8 @@ const envSchema = z.object({
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(120),
   DEFAULT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
   GRACE_PERIOD_DAYS: z.coerce.number().int().positive().default(7),
+  QUEUE_PROCESSOR_ENABLED: z.coerce.boolean().default(true),
+  QUEUE_WEBHOOK_CONCURRENCY: z.coerce.number().int().positive().default(10),
   MOBILE_APP_SCHEME: z.string().default('stageos://')
 });
 
@@ -80,6 +82,10 @@ export const config = {
     rateLimitPerMinute: env.RATE_LIMIT_PER_MINUTE,
     defaultRetentionDays: env.DEFAULT_RETENTION_DAYS,
     gracePeriodDays: env.GRACE_PERIOD_DAYS
+  },
+  queue: {
+    processorEnabled: env.QUEUE_PROCESSOR_ENABLED,
+    webhookConcurrency: env.QUEUE_WEBHOOK_CONCURRENCY
   },
   mobile: {
     scheme: env.MOBILE_APP_SCHEME

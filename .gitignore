@@ -12,4 +12,6 @@ apps/mobile/.expo
 apps/mobile/android
 apps/mobile/ios
 apps/api/prisma/dev.db
+apps/web/playwright-report
+apps/web/test-results
 .DS_Store

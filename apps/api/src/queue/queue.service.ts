@@ -38,12 +38,17 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
+    if (!config.queue.processorEnabled) {
+      this.logger.log('Queue processor disabled; running in producer-only mode');
+      return;
+    }
+
     this.webhookWorker = new Worker<WebhookJobData>(
       'webhook-delivery',
       async (job) => this.processWebhook(job),
       {
         connection: this.connection,
-        concurrency: 10
+        concurrency: config.queue.webhookConcurrency
       }
     );
 
