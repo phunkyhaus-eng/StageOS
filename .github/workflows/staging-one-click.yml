@@ -122,7 +122,7 @@ jobs:
         if: ${{ inputs.run_migrations }}
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 9.15.0
 
       - name: Setup Node
         if: ${{ inputs.run_migrations }}
