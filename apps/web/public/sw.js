@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stageos-static-v1';
+const CACHE_NAME = 'stageos-static-v2';
 const OFFLINE_URLS = ['/dashboard', '/offline', '/manifest.webmanifest', '/icons/icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -44,7 +44,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.pathname.startsWith('/_next/')) {
+    return;
+  }
+
   if (url.origin === self.location.origin) {
+    if (!OFFLINE_URLS.includes(url.pathname)) {
+      return;
+    }
+
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) {

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
+import Script from 'next/script';
 import { StageOsQueryProvider } from '@/components/providers/query-provider';
 import { PwaRegister } from '@/components/providers/pwa-register';
 import './globals.css';
@@ -37,6 +38,34 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <Script
+          id="stageos-dev-sw-unregister"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+                  if (!isLocalhost || !('serviceWorker' in navigator)) return;
+                  navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                    registrations.forEach(function (registration) {
+                      registration.unregister();
+                    });
+                  });
+                  if ('caches' in window) {
+                    caches.keys().then(function (keys) {
+                      keys.forEach(function (key) {
+                        caches.delete(key);
+                      });
+                    });
+                  }
+                } catch (_) {}
+              })();
+            `
+          }}
+        />
+      </head>
       <body className={`${sans.variable} ${mono.variable} stageos-body`}>
         <StageOsQueryProvider>
           <PwaRegister />
