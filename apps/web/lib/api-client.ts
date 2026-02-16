@@ -52,13 +52,19 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   return (await response.text()) as T;
 }
 
-export async function login(email: string, password: string, totpCode?: string) {
+export async function login(
+  email: string,
+  password: string,
+  totpCode?: string,
+  loginAs?: 'manager' | 'member'
+) {
   return apiFetch<{ accessToken: string; sessionId: string }>('/auth/login', {
     method: 'POST',
     body: {
       email,
       password,
-      totpCode
+      totpCode,
+      loginAs
     }
   });
 }

@@ -18,6 +18,8 @@ for (const envPath of envCandidates) {
 }
 
 const prisma = new PrismaClient();
+const DEMO_ORGANISATION_ID = '00000000-0000-0000-0000-000000000001';
+const DEMO_BAND_ID = '00000000-0000-0000-0000-000000000010';
 
 const PERMISSIONS = [
   'read:events',
@@ -77,13 +79,18 @@ async function upsertRoleGraph(organisationId: string) {
 }
 
 async function main() {
+  // Keep local/dev seeding repeatable by clearing the fixed demo tenant first.
+  await prisma.organisation.deleteMany({
+    where: { id: DEMO_ORGANISATION_ID }
+  });
+
   const passwordHash = await bcrypt.hash('Passw0rd!', 10);
 
   const organisation = await prisma.organisation.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000001' },
+    where: { id: DEMO_ORGANISATION_ID },
     update: { name: 'StageOS Demo Organisation' },
     create: {
-      id: '00000000-0000-0000-0000-000000000001',
+      id: DEMO_ORGANISATION_ID,
       name: 'StageOS Demo Organisation',
       retentionDays: 90
     }
@@ -92,10 +99,10 @@ async function main() {
   await upsertRoleGraph(organisation.id);
 
   const band = await prisma.band.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000010' },
+    where: { id: DEMO_BAND_ID },
     update: { name: 'The Stage Drivers' },
     create: {
-      id: '00000000-0000-0000-0000-000000000010',
+      id: DEMO_BAND_ID,
       organisationId: organisation.id,
       name: 'The Stage Drivers',
       description: 'Touring demo band'

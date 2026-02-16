@@ -18,6 +18,10 @@ const envSchema = z.object({
   JWT_ISSUER: z.string().default('stageos'),
   COOKIE_SECURE: z.coerce.boolean().default(false),
   ENCRYPTION_KEY: z.string().min(32).default('stageos-development-encryption-key-0001'),
+  MAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
+  MAIL_FROM: z.string().email().default('noreply@stageos.local'),
+  RESEND_API_KEY: z.string().optional(),
+  STAFFING_OFFER_EXPIRY_HOURS: z.coerce.number().int().min(1).max(168).default(12),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_PRO: z.string().optional(),
@@ -59,6 +63,14 @@ export const config = {
     cookieSecure: env.COOKIE_SECURE
   },
   encryptionKey: env.ENCRYPTION_KEY,
+  mail: {
+    provider: env.MAIL_PROVIDER,
+    from: env.MAIL_FROM,
+    resendApiKey: env.RESEND_API_KEY
+  },
+  staffing: {
+    offerExpiryHours: env.STAFFING_OFFER_EXPIRY_HOURS
+  },
   stripe: {
     secretKey: env.STRIPE_SECRET_KEY,
     webhookSecret: env.STRIPE_WEBHOOK_SECRET,

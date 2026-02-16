@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 import { EventType, EventStatus } from '@prisma/client';
 
 export class CreateEventDto {
@@ -18,8 +18,13 @@ export class CreateEventDto {
   @IsDateString()
   startsAt!: string;
 
+  @IsOptional()
   @IsDateString()
-  endsAt!: string;
+  endsAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  allDay?: boolean;
 
   @IsOptional()
   @IsString()
@@ -36,4 +41,8 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsObject()
+  metadataJson?: Record<string, unknown>;
 }

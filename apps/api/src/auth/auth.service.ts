@@ -359,6 +359,7 @@ export class AuthService {
     email: string;
     password: string;
     totpCode?: string;
+    loginAs?: 'manager' | 'member';
     context?: SessionContext;
   }) {
     const user = await this.prisma.user.findUnique({
@@ -380,6 +381,22 @@ export class AuthService {
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (input.loginAs) {
+      const requiredRole = input.loginAs === 'manager' ? RoleName.MANAGER : RoleName.MEMBER;
+      const membership = await this.prisma.bandMembership.findFirst({
+        where: {
+          userId: user.id,
+          deletedAt: null,
+          roleName: requiredRole
+        },
+        select: { id: true }
+      });
+
+      if (!membership) {
+        throw new UnauthorizedException('Selected login type is not permitted for this account');
+      }
     }
 
     const activeFactor = user.totpFactors[0];

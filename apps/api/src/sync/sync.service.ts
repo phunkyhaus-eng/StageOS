@@ -224,9 +224,10 @@ export class SyncService {
 
   private mapEventCreatePayload(payload: Record<string, unknown>, bandId: string) {
     const startsAt = payload.startsAt ? new Date(String(payload.startsAt)) : new Date();
+    const allDay = Boolean(payload.allDay ?? false);
     const endsAt = payload.endsAt
       ? new Date(String(payload.endsAt))
-      : new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
+      : new Date(startsAt.getTime() + (allDay ? 24 : 2) * 60 * 60 * 1000);
 
     return {
       bandId,
@@ -235,10 +236,12 @@ export class SyncService {
       status: (payload.status as EventStatus) ?? EventStatus.PLANNED,
       startsAt,
       endsAt,
+      allDay,
       venueName: payload.venueName ? String(payload.venueName) : null,
       address: payload.address ? String(payload.address) : null,
       mapUrl: payload.mapUrl ? String(payload.mapUrl) : null,
       notes: payload.notes ? String(payload.notes) : null,
+      metadataJson: payload.metadataJson ?? Prisma.JsonNull,
       scheduleJson: payload.scheduleJson ?? Prisma.JsonNull,
       checklistJson: payload.checklistJson ?? Prisma.JsonNull,
       rosterLocked: Boolean(payload.rosterLocked ?? false)
@@ -291,10 +294,12 @@ export class SyncService {
           status: payload.status ? (payload.status as EventStatus) : undefined,
           startsAt: payload.startsAt ? new Date(String(payload.startsAt)) : undefined,
           endsAt: payload.endsAt ? new Date(String(payload.endsAt)) : undefined,
+          allDay: payload.allDay !== undefined ? Boolean(payload.allDay) : undefined,
           venueName: payload.venueName ? String(payload.venueName) : undefined,
           address: payload.address ? String(payload.address) : undefined,
           mapUrl: payload.mapUrl ? String(payload.mapUrl) : undefined,
           notes: payload.notes ? String(payload.notes) : undefined,
+          metadataJson: payload.metadataJson as Prisma.InputJsonValue | undefined,
           scheduleJson: payload.scheduleJson as Prisma.InputJsonValue | undefined,
           checklistJson: payload.checklistJson as Prisma.InputJsonValue | undefined,
           rosterLocked: payload.rosterLocked !== undefined ? Boolean(payload.rosterLocked) : undefined,
@@ -476,7 +481,7 @@ export class SyncService {
             leadId: payload.leadId ? String(payload.leadId) : null,
             invoiceNumber: String(payload.invoiceNumber ?? `INV-${Date.now()}`),
             status: String(payload.status ?? 'DRAFT'),
-            currency: String(payload.currency ?? 'USD'),
+            currency: String(payload.currency ?? 'GBP'),
             issuedAt: payload.issuedAt ? new Date(String(payload.issuedAt)) : null,
             dueAt: payload.dueAt ? new Date(String(payload.dueAt)) : null,
             subtotal: Number(payload.subtotal ?? payload.total ?? 0),
@@ -536,7 +541,7 @@ export class SyncService {
             category: String(payload.category ?? 'General'),
             description: String(payload.description ?? 'Expense'),
             amount: Number(payload.amount ?? 0),
-            currency: String(payload.currency ?? 'USD'),
+            currency: String(payload.currency ?? 'GBP'),
             spentAt: payload.spentAt ? new Date(String(payload.spentAt)) : new Date(),
             notes: payload.notes ? String(payload.notes) : null,
             version: 1
@@ -593,7 +598,7 @@ export class SyncService {
             type: payload.type === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED',
             amount: payload.amount ? Number(payload.amount) : null,
             percentage: payload.percentage ? Number(payload.percentage) : null,
-            currency: String(payload.currency ?? 'USD'),
+            currency: String(payload.currency ?? 'GBP'),
             notes: payload.notes ? String(payload.notes) : null,
             version: 1
           }

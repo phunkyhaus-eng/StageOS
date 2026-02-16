@@ -10,7 +10,24 @@ export const leadStageSchema = z.enum([
   'COMPLETED'
 ]);
 
-export const eventTypeSchema = z.enum(['GIG', 'REHEARSAL', 'TRAVEL', 'OTHER']);
+export const eventTypeSchema = z.enum([
+  'GIG',
+  'REHEARSAL',
+  'TRAVEL',
+  'HOLD',
+  'PROMO',
+  'RECORDING',
+  'DEADLINE',
+  'OTHER'
+]);
+export const eventStatusSchema = z.enum([
+  'HOLD',
+  'TENTATIVE',
+  'PLANNED',
+  'CONFIRMED',
+  'COMPLETED',
+  'CANCELLED'
+]);
 export const availabilityResponseSchema = z.enum(['YES', 'NO', 'MAYBE']);
 
 export const roleNameSchema = z.enum(['OWNER', 'MANAGER', 'MEMBER', 'CREW', 'ACCOUNTANT']);
@@ -41,13 +58,15 @@ export const createEventSchema = z.object({
   bandId: z.string().uuid(),
   title: z.string().min(1),
   type: eventTypeSchema,
-  status: z.string().default('PLANNED'),
+  status: eventStatusSchema.default('PLANNED'),
   startsAt: z.string().datetime(),
-  endsAt: z.string().datetime(),
+  endsAt: z.string().datetime().optional(),
+  allDay: z.boolean().optional(),
   venueName: z.string().optional(),
   address: z.string().optional(),
   mapUrl: z.string().url().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  metadataJson: z.record(z.unknown()).optional()
 });
 
 export const updateEventSchema = createEventSchema.partial().extend({

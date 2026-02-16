@@ -64,6 +64,7 @@ export class AuthController {
       email: dto.email,
       password: dto.password,
       totpCode: dto.totpCode,
+      loginAs: dto.loginAs,
       context: {
         userAgent: res.req.get('user-agent'),
         ipAddress: res.req.ip,

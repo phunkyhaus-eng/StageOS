@@ -8,6 +8,7 @@ import { ChangeLogService } from '../sync/change-log.service';
 import { AvailabilityGridDto } from './dto/availability-grid.dto';
 import { CreateAvailabilityRequestDto } from './dto/create-availability-request.dto';
 import { RespondAvailabilityDto } from './dto/respond-availability.dto';
+import { SetMemberResponseDto } from './dto/set-member-response.dto';
 
 @Injectable()
 export class AvailabilityService {
@@ -17,6 +18,38 @@ export class AvailabilityService {
     private readonly changeLog: ChangeLogService,
     private readonly audit: AuditService
   ) {}
+
+  private async findYesOverlaps(
+    organisationId: string,
+    bandId: string,
+    userId: string,
+    eventId: string,
+    startsAt: Date,
+    endsAt: Date
+  ) {
+    return this.prisma.availabilityResponse.findMany({
+      where: {
+        organisationId,
+        bandId,
+        userId,
+        response: AvailabilityStatus.YES,
+        availabilityRequest: {
+          event: {
+            id: { not: eventId },
+            startsAt: { lt: endsAt },
+            endsAt: { gt: startsAt },
+            deletedAt: null
+          }
+        },
+        deletedAt: null
+      },
+      include: {
+        availabilityRequest: {
+          include: { event: { select: { id: true, title: true, startsAt: true, endsAt: true } } }
+        }
+      }
+    });
+  }
 
   async createRequest(user: AuthUser, dto: CreateAvailabilityRequestDto) {
     await this.access.ensureBandAccess(user, dto.bandId);
@@ -139,28 +172,14 @@ export class AvailabilityService {
     await this.access.ensureBandAccess(user, request.bandId);
 
     if (dto.response === AvailabilityStatus.YES) {
-      const overlaps = await this.prisma.availabilityResponse.findMany({
-        where: {
-          organisationId: user.organisationId,
-          bandId: request.bandId,
-          userId: user.id,
-          response: AvailabilityStatus.YES,
-          availabilityRequest: {
-            event: {
-              id: { not: request.eventId },
-              startsAt: { lt: request.event.endsAt },
-              endsAt: { gt: request.event.startsAt },
-              deletedAt: null
-            }
-          },
-          deletedAt: null
-        },
-        include: {
-          availabilityRequest: {
-            include: { event: { select: { id: true, title: true, startsAt: true, endsAt: true } } }
-          }
-        }
-      });
+      const overlaps = await this.findYesOverlaps(
+        user.organisationId,
+        request.bandId,
+        user.id,
+        request.eventId,
+        request.event.startsAt,
+        request.event.endsAt
+      );
 
       if (overlaps.length > 0) {
         throw new ConflictException({
@@ -203,6 +222,115 @@ export class AvailabilityService {
     });
 
     return response;
+  }
+
+  async setMemberResponse(user: AuthUser, requestId: string, dto: SetMemberResponseDto) {
+    const request = await this.prisma.availabilityRequest.findFirst({
+      where: {
+        id: requestId,
+        organisationId: user.organisationId,
+        deletedAt: null
+      },
+      include: {
+        event: true
+      }
+    });
+
+    if (!request) throw new NotFoundException('Availability request not found');
+    if (request.lockedAt) throw new ConflictException('Availability has been locked');
+
+    await this.access.ensureBandAccess(user, request.bandId);
+
+    const member = await this.prisma.bandMembership.findFirst({
+      where: {
+        organisationId: user.organisationId,
+        bandId: request.bandId,
+        userId: dto.userId,
+        deletedAt: null
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    if (!member) throw new NotFoundException('Member not found in band');
+
+    if (dto.response === AvailabilityStatus.YES) {
+      const overlaps = await this.findYesOverlaps(
+        user.organisationId,
+        request.bandId,
+        dto.userId,
+        request.eventId,
+        request.event.startsAt,
+        request.event.endsAt
+      );
+
+      if (overlaps.length > 0) {
+        throw new ConflictException({
+          message: 'Double-booking detected',
+          overlaps: overlaps.map((item) => item.availabilityRequest.event)
+        });
+      }
+    }
+
+    const existing = await this.prisma.availabilityResponse.findFirst({
+      where: {
+        availabilityRequestId: request.id,
+        userId: dto.userId,
+        deletedAt: null
+      }
+    });
+
+    const response = existing
+      ? await this.prisma.availabilityResponse.update({
+          where: { id: existing.id },
+          data: {
+            response: dto.response,
+            notes: dto.notes,
+            version: { increment: 1 }
+          }
+        })
+      : await this.prisma.availabilityResponse.create({
+          data: {
+            organisationId: user.organisationId,
+            bandId: request.bandId,
+            availabilityRequestId: request.id,
+            userId: dto.userId,
+            response: dto.response,
+            notes: dto.notes,
+            version: 1
+          }
+        });
+
+    await this.changeLog.append({
+      organisationId: user.organisationId,
+      bandId: request.bandId,
+      entityType: 'AVAILABILITY_RESPONSE',
+      entityId: response.id,
+      action: existing ? 'update' : 'create',
+      version: response.version,
+      payload: { response: response.response, byManager: true, targetUserId: dto.userId }
+    });
+
+    await this.audit.log({
+      organisationId: user.organisationId,
+      actorId: user.id,
+      action: 'availability.response.set_member',
+      entityType: 'AvailabilityResponse',
+      entityId: response.id,
+      metadata: {
+        requestId,
+        targetUserId: dto.userId,
+        response: dto.response
+      }
+    });
+
+    return {
+      ...response,
+      user: member.user
+    };
   }
 
   async lockRoster(user: AuthUser, requestId: string) {

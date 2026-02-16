@@ -29,10 +29,16 @@ enum EventType {
   GIG
   REHEARSAL
   TRAVEL
+  HOLD
+  PROMO
+  RECORDING
+  DEADLINE
   OTHER
 }
 
 enum EventStatus {
+  HOLD
+  TENTATIVE
   PLANNED
   CONFIRMED
   COMPLETED
@@ -44,6 +50,44 @@ enum AvailabilityStatus {
   YES
   NO
   MAYBE
+}
+
+enum PersonStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum StaffRole {
+  DRUMS
+  BASS
+  GUITAR
+  VOCALS
+  SOUND
+  KEYS
+  PERCUSSION
+  OTHER
+}
+
+enum OfferPolicy {
+  CASCADE
+}
+
+enum GigRoleRequirementStatus {
+  UNFILLED
+  OFFERING
+  FILLED
+}
+
+enum GigRoleAssignmentStatus {
+  OFFERED
+  CONFIRMED
+  DECLINED
+  EXPIRED
+}
+
+enum OfferResponse {
+  YES
+  NO
 }
 
 enum ItineraryType {
@@ -142,6 +186,11 @@ model Organisation {
   storageSnapshots  StorageUsageSnapshot[]
   brandingProfiles  BrandingProfile[]
   ipAnomalies       IpAnomaly[]
+  persons           Person[]
+  gigRoleRequirements GigRoleRequirement[]
+  gigRoleRankLists  GigRoleRankList[]
+  gigRoleAssignments GigRoleAssignment[]
+  offerAttempts     OfferAttempt[]
 
   @@index([deletedAt])
 }
@@ -173,6 +222,7 @@ model User {
   featureFlags FeatureFlag[]
   featureUsage FeatureUsageEvent[]
   ipAnomalies  IpAnomaly[]
+  personProfiles Person[]
 
   @@index([organisationId])
   @@index([deletedAt])
@@ -212,6 +262,11 @@ model Band {
   analyticsDaily      AnalyticsDaily[]
   featureUsage        FeatureUsageEvent[]
   storageSnapshots    StorageUsageSnapshot[]
+  persons             Person[]
+  gigRoleRequirements GigRoleRequirement[]
+  gigRoleRankLists    GigRoleRankList[]
+  gigRoleAssignments  GigRoleAssignment[]
+  offerAttempts       OfferAttempt[]
 
   @@index([organisationId])
   @@index([deletedAt])
@@ -323,10 +378,12 @@ model Event {
   status          EventStatus @default(PLANNED)
   startsAt        DateTime
   endsAt          DateTime
+  allDay          Boolean     @default(false)
   venueName       String?
   address         String?
   mapUrl          String?
   notes           String?
+  metadataJson    Json?
   scheduleJson    Json?
   checklistJson   Json?
   rosterLocked    Boolean     @default(false)
@@ -350,9 +407,163 @@ model Event {
   tours        TourEvent[]
   itineraries  ItineraryItem[]
   availReqs    AvailabilityRequest[]
+  roleRequirements GigRoleRequirement[]
+  roleAssignments GigRoleAssignment[]
+  offerAttempts OfferAttempt[]
 
   @@index([organisationId, bandId, startsAt])
   @@index([deletedAt])
+}
+
+model Person {
+  id                String       @id @default(uuid())
+  organisationId    String
+  bandId            String
+  userId            String?
+  name              String
+  email             String
+  phone             String?
+  status            PersonStatus @default(ACTIVE)
+  roles             StaffRole[]
+  emailVerifiedAt   DateTime?
+  availabilityPrefs Json?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  deletedAt         DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  rankEntries  GigRoleRankList[]
+  assignments  GigRoleAssignment[]
+  attempts     OfferAttempt[]
+  emailTokens  PersonEmailToken[]
+
+  @@unique([bandId, email])
+  @@index([organisationId, bandId, status])
+  @@index([userId])
+  @@index([deletedAt])
+}
+
+model GigRoleRequirement {
+  id           String                   @id @default(uuid())
+  organisationId String
+  bandId       String
+  gigId        String
+  role         StaffRole
+  quantity     Int                      @default(1)
+  offerPolicy  OfferPolicy              @default(CASCADE)
+  status       GigRoleRequirementStatus @default(UNFILLED)
+  offersPaused Boolean                  @default(false)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  deletedAt    DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  gig          Event        @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  rankList     GigRoleRankList[]
+  assignments  GigRoleAssignment[]
+  attempts     OfferAttempt[]
+
+  @@unique([gigId, role])
+  @@index([organisationId, bandId, status])
+  @@index([deletedAt])
+}
+
+model GigRoleRankList {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  requirementId  String?
+  templateName   String?
+  role           StaffRole
+  rank           Int
+  personId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band               @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  requirement  GigRoleRequirement? @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  person       Person             @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([requirementId, rank])
+  @@index([organisationId, bandId, role, templateName])
+  @@index([personId])
+  @@index([deletedAt])
+}
+
+model GigRoleAssignment {
+  id               String                  @id @default(uuid())
+  organisationId   String
+  bandId           String
+  gigId            String
+  requirementId    String
+  role             StaffRole
+  personId         String
+  attemptId        String?
+  assignmentStatus GigRoleAssignmentStatus
+  conflictWarning  String?
+  respondedAt      DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  deletedAt        DateTime?
+
+  organisation Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band              @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  gig          Event             @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  requirement  GigRoleRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  person       Person            @relation(fields: [personId], references: [id], onDelete: Cascade)
+  attempt      OfferAttempt?     @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, bandId, gigId, role, assignmentStatus])
+  @@index([requirementId, assignmentStatus])
+  @@index([personId, assignmentStatus])
+  @@index([deletedAt])
+}
+
+model OfferAttempt {
+  id               String       @id @default(uuid())
+  organisationId   String
+  bandId           String
+  gigId            String
+  requirementId    String
+  role             StaffRole
+  personId         String
+  attemptNo        Int
+  sentAt           DateTime
+  respondedAt      DateTime?
+  response         OfferResponse?
+  expiresAt        DateTime
+  correlationToken String       @unique
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organisation Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band              @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  gig          Event             @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  requirement  GigRoleRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  person       Person            @relation(fields: [personId], references: [id], onDelete: Cascade)
+  assignments  GigRoleAssignment[]
+
+  @@unique([requirementId, attemptNo])
+  @@index([organisationId, bandId, role, expiresAt])
+  @@index([requirementId, respondedAt])
+}
+
+model PersonEmailToken {
+  id          String   @id @default(uuid())
+  personId    String
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  verifiedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId, expiresAt])
 }
 
 model EventContact {

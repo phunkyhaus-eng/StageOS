@@ -9,6 +9,7 @@ import { AvailabilityService } from './availability.service';
 import { AvailabilityGridDto } from './dto/availability-grid.dto';
 import { CreateAvailabilityRequestDto } from './dto/create-availability-request.dto';
 import { RespondAvailabilityDto } from './dto/respond-availability.dto';
+import { SetMemberResponseDto } from './dto/set-member-response.dto';
 
 @ApiTags('availability')
 @ApiBearerAuth()
@@ -41,6 +42,16 @@ export class AvailabilityController {
     @Body() dto: RespondAvailabilityDto
   ) {
     return this.availability.respond(user, requestId, dto);
+  }
+
+  @Post('requests/:id/member-response')
+  @Permissions('write:events')
+  setMemberResponse(
+    @CurrentUser() user: AuthUser,
+    @Param('id') requestId: string,
+    @Body() dto: SetMemberResponseDto
+  ) {
+    return this.availability.setMemberResponse(user, requestId, dto);
   }
 
   @Post('requests/:id/lock')

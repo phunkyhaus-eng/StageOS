@@ -30,6 +30,7 @@ import { DiagnosticsModule } from './diagnostics/diagnostics.module';
 import { BrandingModule } from './branding/branding.module';
 import { PublicApiModule } from './public-api/public-api.module';
 import { QueueModule } from './queue/queue.module';
+import { StaffingModule } from './staffing/staffing.module';
 
 @Module({
   imports: [
@@ -80,7 +81,8 @@ import { QueueModule } from './queue/queue.module';
     ComplianceModule,
     DiagnosticsModule,
     BrandingModule,
-    PublicApiModule
+    PublicApiModule,
+    StaffingModule
   ],
   providers: [
     {

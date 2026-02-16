@@ -1,6 +1,6 @@
 export const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/events', label: 'Event Dossiers' },
+  { href: '/events', label: 'Calendar' },
   { href: '/crm', label: 'Booking CRM' },
   { href: '/availability', label: 'Availability' },
   { href: '/setlists', label: 'Setlists' },
@@ -8,5 +8,6 @@ export const navItems = [
   { href: '/files', label: 'File Hub' },
   { href: '/tours', label: 'Tours' },
   { href: '/analytics', label: 'Analytics' },
+  { href: '/offers', label: 'My Offers' },
   { href: '/settings', label: 'Settings' }
 ] as const;

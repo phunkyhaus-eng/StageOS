@@ -1,5 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
-import { IsOptional } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -16,4 +15,8 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   deviceName?: string;
+
+  @IsOptional()
+  @IsIn(['manager', 'member'])
+  loginAs?: 'manager' | 'member';
 }

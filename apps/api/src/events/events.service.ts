@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '../common/types/auth-user';
 import { AccessService } from '../rbac/access.service';
@@ -31,6 +32,18 @@ export class EventsService {
           bandId,
           deletedAt: null
         },
+        include: {
+          tours: {
+            include: {
+              tour: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          }
+        },
         orderBy: { startsAt: 'asc' },
         skip,
         take
@@ -49,6 +62,15 @@ export class EventsService {
 
   async create(user: AuthUser, dto: CreateEventDto) {
     await this.access.ensureBandAccess(user, dto.bandId);
+    const startsAt = new Date(dto.startsAt);
+    const isAllDay = Boolean(dto.allDay);
+    const providedEnd = dto.endsAt ? new Date(dto.endsAt) : null;
+    const endsAt =
+      providedEnd && !Number.isNaN(providedEnd.getTime()) && providedEnd.getTime() > startsAt.getTime()
+        ? providedEnd
+        : isAllDay
+          ? new Date(startsAt.getTime() + 24 * 60 * 60 * 1000)
+          : new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
 
     const created = await this.prisma.event.create({
       data: {
@@ -57,12 +79,14 @@ export class EventsService {
         title: dto.title,
         type: dto.type,
         status: dto.status,
-        startsAt: new Date(dto.startsAt),
-        endsAt: new Date(dto.endsAt),
+        startsAt,
+        endsAt,
+        allDay: isAllDay,
         venueName: dto.venueName,
         address: dto.address,
         mapUrl: dto.mapUrl,
         notes: dto.notes,
+        metadataJson: (dto.metadataJson as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
         version: 1
       }
     });
@@ -118,6 +142,16 @@ export class EventsService {
           include: {
             responses: { where: { deletedAt: null }, include: { user: true } }
           }
+        },
+        tours: {
+          include: {
+            tour: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
         }
       }
     });
@@ -149,12 +183,35 @@ export class EventsService {
 
     await this.access.ensureBandAccess(user, existing.bandId);
 
+    const startsAt = dto.startsAt ? new Date(dto.startsAt) : existing.startsAt;
+    const providedEnd = dto.endsAt ? new Date(dto.endsAt) : null;
+    const allDay = dto.allDay ?? existing.allDay;
+    const endsAt =
+      dto.endsAt === undefined
+        ? undefined
+        : providedEnd && !Number.isNaN(providedEnd.getTime()) && providedEnd.getTime() > startsAt.getTime()
+          ? providedEnd
+          : allDay
+            ? new Date(startsAt.getTime() + 24 * 60 * 60 * 1000)
+            : new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
+
     const updated = await this.prisma.event.update({
       where: { id: eventId },
       data: {
-        ...dto,
-        startsAt: dto.startsAt ? new Date(dto.startsAt) : undefined,
-        endsAt: dto.endsAt ? new Date(dto.endsAt) : undefined,
+        title: dto.title,
+        type: dto.type,
+        status: dto.status,
+        startsAt: dto.startsAt ? startsAt : undefined,
+        endsAt,
+        allDay: dto.allDay,
+        venueName: dto.venueName,
+        address: dto.address,
+        mapUrl: dto.mapUrl,
+        notes: dto.notes,
+        metadataJson:
+          dto.metadataJson === undefined
+            ? undefined
+            : ((dto.metadataJson as Prisma.InputJsonValue | null) ?? Prisma.JsonNull),
         version: { increment: 1 }
       }
     });
