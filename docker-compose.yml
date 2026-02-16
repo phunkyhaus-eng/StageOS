@@ -78,6 +78,7 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    command: ['node', 'dist/apps/api/src/main.js']
     ports:
       - '4000:4000'
 
