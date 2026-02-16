@@ -1,0 +1,17 @@
+{
+  "name": "stageos",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @stageos/api --filter @stageos/web dev",
+    "build": "pnpm -r build",
+    "lint": "corepack pnpm -r lint && node tools/check-stageos-branding.mjs",
+    "brand:check": "node tools/check-stageos-branding.mjs",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:migrate": "pnpm --filter @stageos/api prisma:migrate",
+    "db:push": "pnpm --filter @stageos/api prisma:push",
+    "db:seed": "pnpm --filter @stageos/api prisma:seed"
+  }
+}

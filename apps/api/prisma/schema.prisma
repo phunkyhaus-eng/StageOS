@@ -1,0 +1,1172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  OWNER
+  MANAGER
+  MEMBER
+  CREW
+  ACCOUNTANT
+}
+
+enum LeadStage {
+  LEAD
+  CONTACTED
+  NEGOTIATING
+  CONFIRMED
+  CONTRACT_SENT
+  PAID
+  COMPLETED
+}
+
+enum EventType {
+  GIG
+  REHEARSAL
+  TRAVEL
+  OTHER
+}
+
+enum EventStatus {
+  PLANNED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum AvailabilityStatus {
+  PENDING
+  YES
+  NO
+  MAYBE
+}
+
+enum ItineraryType {
+  TRAVEL
+  HOTEL
+  OTHER
+}
+
+enum PayoutType {
+  FIXED
+  PERCENTAGE
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  TOURING_PRO
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum FeatureFlagScope {
+  ORG
+  USER
+}
+
+enum PluginStatus {
+  INSTALLED
+  DISABLED
+  ERROR
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model Organisation {
+  id            String   @id @default(uuid())
+  name          String
+  retentionDays Int      @default(90)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  users             User[]
+  bands             Band[]
+  roles             Role[]
+  permissions       Permission[]
+  userRoles         UserRole[]
+  contacts          Contact[]
+  events            Event[]
+  leads             Lead[]
+  songs             Song[]
+  songVersions      SongVersion[]
+  setlists          Setlist[]
+  setlistItems      SetlistItem[]
+  fileAssets        FileAsset[]
+  fileAssetLinks    FileAssetLink[]
+  invoices          Invoice[]
+  expenses          Expense[]
+  payouts           Payout[]
+  tours             Tour[]
+  itineraryItems    ItineraryItem[]
+  availabilityReqs  AvailabilityRequest[]
+  availabilityResps AvailabilityResponse[]
+  auditLogs         AuditLog[]
+  apiKeys           ApiKey[]
+  webhookEndpoints  WebhookEndpoint[]
+  webhookDeliveries WebhookDelivery[]
+  devices           Device[]
+  syncCursors       SyncCursor[]
+  changeLogs        ChangeLog[]
+  bandMemberships   BandMembership[]
+  subscriptions     Subscription[]
+  featureFlags      FeatureFlag[]
+  plugins           Plugin[]
+  pluginRuns        PluginExecution[]
+  userSessions      UserSession[]
+  verificationTokens EmailVerificationToken[]
+  analyticsDaily    AnalyticsDaily[]
+  featureUsage      FeatureUsageEvent[]
+  storageSnapshots  StorageUsageSnapshot[]
+  brandingProfiles  BrandingProfile[]
+  ipAnomalies       IpAnomaly[]
+
+  @@index([deletedAt])
+}
+
+model User {
+  id                String   @id @default(uuid())
+  organisationId    String
+  email             String   @unique
+  passwordHash      String
+  name              String
+  calendarToken     String   @unique @default(uuid())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  organisation Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberships  BandMembership[]
+  userRoles    UserRole[]
+  devices      Device[]
+  refreshTokens RefreshToken[]
+  responses    AvailabilityResponse[]
+  tasks        EventTask[]
+  payouts      Payout[]
+  authoredMsgs EventMessage[]
+  auditLogs    AuditLog[]         @relation("AuditActor")
+  sessions     UserSession[]
+  totpFactors  TotpFactor[]
+  verificationTokens EmailVerificationToken[]
+  featureFlags FeatureFlag[]
+  featureUsage FeatureUsageEvent[]
+  ipAnomalies  IpAnomaly[]
+
+  @@index([organisationId])
+  @@index([deletedAt])
+}
+
+model Band {
+  id            String   @id @default(uuid())
+  organisationId String
+  name          String
+  description   String?
+  calendarToken String   @unique @default(uuid())
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  organisation        Organisation         @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  memberships         BandMembership[]
+  events              Event[]
+  leads               Lead[]
+  songs               Song[]
+  contacts            Contact[]
+  songVersions        SongVersion[]
+  setlists            Setlist[]
+  setlistItems        SetlistItem[]
+  fileAssets          FileAsset[]
+  fileAssetLinks      FileAssetLink[]
+  invoices            Invoice[]
+  expenses            Expense[]
+  payouts             Payout[]
+  tours               Tour[]
+  itineraryItems      ItineraryItem[]
+  availabilityReqs    AvailabilityRequest[]
+  availabilityResps   AvailabilityResponse[]
+  syncCursors         SyncCursor[]
+  changeLogs          ChangeLog[]
+  analyticsDaily      AnalyticsDaily[]
+  featureUsage        FeatureUsageEvent[]
+  storageSnapshots    StorageUsageSnapshot[]
+
+  @@index([organisationId])
+  @@index([deletedAt])
+}
+
+model BandMembership {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  userId         String
+  roleName       RoleName
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bandId, userId])
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model Role {
+  id             String   @id @default(uuid())
+  organisationId String
+  name           RoleName
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organisation Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  rolePerms    RolePermission[]
+  userRoles    UserRole[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId])
+}
+
+model Permission {
+  id             String   @id @default(uuid())
+  organisationId String
+  key            String
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organisation Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  rolePerms    RolePermission[]
+
+  @@unique([organisationId, key])
+  @@index([organisationId])
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model UserRole {
+  id             String   @id @default(uuid())
+  organisationId String
+  userId         String
+  roleId         String
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, userId, roleId])
+  @@index([organisationId, userId])
+}
+
+model Contact {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String?
+  name           String
+  email          String?
+  phone          String?
+  roleType       String?
+  notes          String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band?        @relation(fields: [bandId], references: [id], onDelete: SetNull)
+  eventLinks    EventContact[]
+
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model Event {
+  id              String      @id @default(uuid())
+  organisationId  String
+  bandId          String
+  title           String
+  type            EventType
+  status          EventStatus @default(PLANNED)
+  startsAt        DateTime
+  endsAt          DateTime
+  venueName       String?
+  address         String?
+  mapUrl          String?
+  notes           String?
+  scheduleJson    Json?
+  checklistJson   Json?
+  rosterLocked    Boolean     @default(false)
+  version         Int         @default(1)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  contacts     EventContact[]
+  schedules    ScheduleBlock[]
+  tasks        EventTask[]
+  messages     EventMessage[]
+  leads        Lead[]
+  invoices     Invoice[]
+  expenses     Expense[]
+  payouts      Payout[]
+  setlists     Setlist[]
+  files        FileAssetLink[]
+  tours        TourEvent[]
+  itineraries  ItineraryItem[]
+  availReqs    AvailabilityRequest[]
+
+  @@index([organisationId, bandId, startsAt])
+  @@index([deletedAt])
+}
+
+model EventContact {
+  id        String   @id @default(uuid())
+  eventId   String
+  contactId String
+  kind      String
+
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, contactId, kind])
+}
+
+model ScheduleBlock {
+  id        String   @id @default(uuid())
+  eventId   String
+  title     String
+  startsAt  DateTime
+  endsAt    DateTime
+  notes     String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model EventTask {
+  id            String   @id @default(uuid())
+  eventId        String
+  title          String
+  done           Boolean  @default(false)
+  assignedUserId String?
+  dueAt          DateTime?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  event         Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assignedUser  User? @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+}
+
+model EventMessage {
+  id        String   @id @default(uuid())
+  eventId   String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  event  Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+}
+
+model Lead {
+  id              String    @id @default(uuid())
+  organisationId  String
+  bandId          String
+  name            String
+  stage           LeadStage @default(LEAD)
+  contactName     String?
+  contactEmail    String?
+  expectedDate    DateTime?
+  expectedFee     Decimal?  @db.Decimal(12, 2)
+  notes           String?
+  convertedEventId String?
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  convertedEvent Event?     @relation(fields: [convertedEventId], references: [id], onDelete: SetNull)
+  activities   LeadActivity[]
+  files        FileAssetLink[]
+  invoices     Invoice[]
+
+  @@index([organisationId, bandId, stage])
+  @@index([deletedAt])
+}
+
+model LeadActivity {
+  id        String   @id @default(uuid())
+  leadId     String
+  message    String
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+}
+
+model Song {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  title          String
+  key            String?
+  bpm            Int?
+  durationSec    Int?
+  tags           String[]
+  notes          String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  versions     SongVersion[]
+
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model SongVersion {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  songId         String
+  name           String
+  arrangementKey String?
+  notes          String?
+  chartAssetId   String?
+  audioAssetId   String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  song         Song         @relation(fields: [songId], references: [id], onDelete: Cascade)
+  setlistItems  SetlistItem[]
+  files         FileAssetLink[]
+
+  @@index([organisationId, bandId])
+  @@index([songId])
+  @@index([deletedAt])
+}
+
+model Setlist {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  eventId        String?
+  name           String
+  locked         Boolean  @default(false)
+  totalDurationSec Int    @default(0)
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  items        SetlistItem[]
+
+  @@index([organisationId, bandId])
+  @@index([eventId])
+  @@index([deletedAt])
+}
+
+model SetlistItem {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  setlistId      String
+  songVersionId  String
+  position       Int
+  notes          String?
+  durationSec    Int?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  setlist      Setlist      @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  songVersion  SongVersion  @relation(fields: [songVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, bandId, setlistId, position])
+  @@index([deletedAt])
+}
+
+model FileAsset {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String?
+  bucket         String
+  objectKey      String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  etag           String?
+  checksum       String?
+  availableOffline Boolean @default(false)
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band?        @relation(fields: [bandId], references: [id], onDelete: SetNull)
+  links        FileAssetLink[]
+
+  @@index([organisationId, bandId])
+  @@unique([bucket, objectKey])
+  @@index([deletedAt])
+}
+
+model FileAssetLink {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String?
+  fileAssetId    String
+  eventId        String?
+  leadId         String?
+  songVersionId  String?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band?        @relation(fields: [bandId], references: [id], onDelete: SetNull)
+  fileAsset    FileAsset    @relation(fields: [fileAssetId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  lead         Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  songVersion  SongVersion? @relation(fields: [songVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, bandId])
+  @@index([eventId])
+  @@index([leadId])
+  @@index([songVersionId])
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  eventId        String?
+  leadId         String?
+  invoiceNumber  String
+  status         String   @default("DRAFT")
+  currency       String   @default("GBP")
+  issuedAt       DateTime?
+  dueAt          DateTime?
+  paidAt         DateTime?
+  subtotal       Decimal  @default(0) @db.Decimal(12, 2)
+  total          Decimal  @default(0) @db.Decimal(12, 2)
+  notes          String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  lead         Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lines        InvoiceLine[]
+
+  @@unique([organisationId, invoiceNumber])
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model InvoiceLine {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Decimal @default(1) @db.Decimal(10, 2)
+  unitPrice   Decimal @default(0) @db.Decimal(12, 2)
+  lineTotal   Decimal @default(0) @db.Decimal(12, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Expense {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  eventId        String?
+  category       String
+  description    String
+  amount         Decimal  @db.Decimal(12, 2)
+  currency       String   @default("GBP")
+  spentAt        DateTime
+  notes          String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model Payout {
+  id             String    @id @default(uuid())
+  organisationId String
+  bandId         String
+  eventId        String?
+  userId         String?
+  type           PayoutType
+  amount         Decimal?  @db.Decimal(12, 2)
+  percentage     Decimal?  @db.Decimal(5, 2)
+  currency       String    @default("GBP")
+  notes          String?
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model Tour {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  name           String
+  startsAt       DateTime?
+  endsAt         DateTime?
+  notes          String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  itineraryItems ItineraryItem[]
+  events       TourEvent[]
+
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model TourEvent {
+  id      String @id @default(uuid())
+  tourId  String
+  eventId String
+
+  tour  Tour  @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, eventId])
+}
+
+model ItineraryItem {
+  id             String        @id @default(uuid())
+  organisationId String
+  bandId         String
+  tourId         String
+  eventId        String?
+  type           ItineraryType
+  title          String
+  startsAt       DateTime
+  endsAt         DateTime?
+  location       String?
+  notes          String?
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  tour         Tour         @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, bandId, startsAt])
+  @@index([deletedAt])
+}
+
+model AvailabilityRequest {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  eventId        String
+  targetGroup    String
+  notes          String?
+  closesAt       DateTime?
+  lockedAt       DateTime?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  responses    AvailabilityResponse[]
+
+  @@index([organisationId, bandId])
+  @@index([eventId])
+  @@index([deletedAt])
+}
+
+model AvailabilityResponse {
+  id                    String             @id @default(uuid())
+  organisationId        String
+  bandId                String
+  availabilityRequestId String
+  userId                String
+  response              AvailabilityStatus
+  notes                 String?
+  version               Int                @default(1)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  deletedAt             DateTime?
+
+  organisation        Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band                Band                @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  availabilityRequest AvailabilityRequest @relation(fields: [availabilityRequestId], references: [id], onDelete: Cascade)
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([availabilityRequestId, userId])
+  @@index([organisationId, bandId])
+  @@index([deletedAt])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organisationId String
+  actorId        String?
+  action         String
+  entityType     String
+  entityId       String
+  diff           Json?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model ApiKey {
+  id             String   @id @default(uuid())
+  organisationId String
+  name           String
+  keyHash        String   @unique
+  scopes         String[]
+  createdByUserId String
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([deletedAt])
+}
+
+model WebhookEndpoint {
+  id             String   @id @default(uuid())
+  organisationId String
+  url            String
+  events         String[]
+  secretHash     String
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([organisationId])
+  @@index([deletedAt])
+}
+
+model WebhookDelivery {
+  id             String                @id @default(uuid())
+  organisationId String
+  endpointId     String
+  eventType      String
+  payload        Json
+  signature      String
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  responseStatus Int?
+  responseBody   String?
+  nextAttemptAt  DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  organisation Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  endpoint     WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([endpointId])
+}
+
+model Device {
+  id             String   @id
+  organisationId String
+  userId         String
+  platform       String
+  name           String?
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cursors      SyncCursor[]
+
+  @@index([organisationId, userId])
+}
+
+model SyncCursor {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  deviceId       String
+  lastCursor     String?
+  updatedAt      DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  device       Device       @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, bandId])
+  @@index([organisationId, bandId])
+}
+
+model ChangeLog {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String
+  entityType     String
+  entityId       String
+  action         String
+  version        Int
+  payload        Json?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, bandId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Subscription {
+  id                    String             @id @default(uuid())
+  organisationId        String
+  tier                  SubscriptionTier   @default(FREE)
+  status                SubscriptionStatus @default(TRIALING)
+  stripeCustomerId      String?            @unique
+  stripeSubscriptionId  String?            @unique
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean            @default(false)
+  graceUntil            DateTime?
+  meteredEventAllowance Int                @default(50)
+  meteredStorageGb      Int                @default(2)
+  addOns                Json?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  deletedAt             DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([deletedAt])
+}
+
+model FeatureFlag {
+  id             String           @id @default(uuid())
+  organisationId String
+  userId         String?
+  scope          FeatureFlagScope @default(ORG)
+  key            String
+  enabled        Boolean          @default(false)
+  config         Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, userId, key])
+  @@index([organisationId, scope, key])
+  @@index([deletedAt])
+}
+
+model Plugin {
+  id              String       @id @default(uuid())
+  organisationId  String
+  key             String
+  name            String
+  version         String
+  status          PluginStatus @default(INSTALLED)
+  sourceUrl       String?
+  manifest        Json
+  sandboxPolicy   Json?
+  enabled         Boolean      @default(true)
+  createdByUserId String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  organisation Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  runs         PluginExecution[]
+
+  @@unique([organisationId, key])
+  @@index([organisationId, enabled])
+  @@index([deletedAt])
+}
+
+model PluginExecution {
+  id             String   @id @default(uuid())
+  organisationId String
+  pluginId       String
+  actorUserId    String?
+  hook           String
+  payload        Json?
+  result         Json?
+  error          String?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  plugin       Plugin       @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, createdAt])
+  @@index([pluginId, hook])
+}
+
+model BrandingProfile {
+  id             String   @id @default(uuid())
+  organisationId String
+  host           String
+  displayName    String
+  logoUrl        String?
+  accentColor    String   @default("#38bdf8")
+  emailTemplates Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, host])
+  @@index([organisationId])
+  @@index([deletedAt])
+}
+
+model UserSession {
+  id               String        @id @default(uuid())
+  organisationId   String
+  userId           String
+  refreshTokenHash String        @unique
+  deviceLabel      String?
+  ipAddress        String?
+  userAgent        String?
+  status           SessionStatus @default(ACTIVE)
+  lastSeenAt       DateTime      @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, userId, status])
+  @@index([expiresAt])
+}
+
+model TotpFactor {
+  id               String   @id @default(uuid())
+  userId           String
+  secretEncrypted  String
+  recoveryCodesEnc String[]
+  verifiedAt       DateTime?
+  disabledAt       DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, disabledAt])
+}
+
+model EmailVerificationToken {
+  id             String   @id @default(uuid())
+  organisationId String
+  userId         String
+  email          String
+  tokenHash      String   @unique
+  expiresAt      DateTime
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, userId, expiresAt])
+}
+
+model IpAnomaly {
+  id             String   @id @default(uuid())
+  organisationId String
+  userId         String?
+  ipAddress      String
+  userAgent      String?
+  reason         String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, createdAt])
+  @@index([ipAddress, createdAt])
+}
+
+model AnalyticsDaily {
+  id                         String   @id @default(uuid())
+  organisationId             String
+  bandId                     String?
+  day                        DateTime
+  revenueTotal               Decimal  @default(0) @db.Decimal(14, 2)
+  expensesTotal              Decimal  @default(0) @db.Decimal(14, 2)
+  profitTotal                Decimal  @default(0) @db.Decimal(14, 2)
+  leadConversionRate         Decimal  @default(0) @db.Decimal(7, 4)
+  avgGigProfit               Decimal  @default(0) @db.Decimal(14, 2)
+  payoutTotal                Decimal  @default(0) @db.Decimal(14, 2)
+  availabilityReliabilityPct Decimal  @default(0) @db.Decimal(7, 4)
+  payload                    Json?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band?        @relation(fields: [bandId], references: [id], onDelete: SetNull)
+
+  @@unique([organisationId, bandId, day])
+  @@index([organisationId, day])
+}
+
+model FeatureUsageEvent {
+  id             String   @id @default(uuid())
+  organisationId String
+  userId         String?
+  bandId         String?
+  feature        String
+  action         String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  band         Band?        @relation(fields: [bandId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, feature, createdAt])
+  @@index([userId, createdAt])
+}
+
+model StorageUsageSnapshot {
+  id             String   @id @default(uuid())
+  organisationId String
+  bandId         String?
+  bytesTotal     BigInt   @default(0)
+  fileCount      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  band         Band?        @relation(fields: [bandId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, createdAt])
+  @@index([bandId, createdAt])
+}

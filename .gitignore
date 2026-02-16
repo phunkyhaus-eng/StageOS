@@ -1,0 +1,15 @@
+node_modules
+.pnpm-store
+.env
+.env.*
+!.env.example
+dist
+coverage
+.next
+*.tsbuildinfo
+expo-env.d.ts
+apps/mobile/.expo
+apps/mobile/android
+apps/mobile/ios
+apps/api/prisma/dev.db
+.DS_Store
