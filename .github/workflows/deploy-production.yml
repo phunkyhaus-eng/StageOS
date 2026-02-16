@@ -19,6 +19,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Compute image tags
+        id: meta
+        run: |
+          REPO_LOWER="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          TAG="${{ github.event.inputs.release_tag }}"
+          echo "api_production=ghcr.io/${REPO_LOWER}/stageos-api:production" >> "$GITHUB_OUTPUT"
+          echo "api_release=ghcr.io/${REPO_LOWER}/stageos-api:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "web_production=ghcr.io/${REPO_LOWER}/stageos-web:production" >> "$GITHUB_OUTPUT"
+          echo "web_release=ghcr.io/${REPO_LOWER}/stageos-web:${TAG}" >> "$GITHUB_OUTPUT"
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -36,8 +46,8 @@ jobs:
           file: apps/api/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/stageos-api:production
-            ghcr.io/${{ github.repository }}/stageos-api:${{ github.event.inputs.release_tag }}
+            ${{ steps.meta.outputs.api_production }}
+            ${{ steps.meta.outputs.api_release }}
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -46,5 +56,5 @@ jobs:
           file: apps/web/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/stageos-web:production
-            ghcr.io/${{ github.repository }}/stageos-web:${{ github.event.inputs.release_tag }}
+            ${{ steps.meta.outputs.web_production }}
+            ${{ steps.meta.outputs.web_release }}

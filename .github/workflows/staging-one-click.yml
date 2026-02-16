@@ -52,8 +52,12 @@ jobs:
           REPO_LOWER="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
           API_IMAGE="ghcr.io/${REPO_LOWER}/stageos-api:${{ inputs.release_tag }}"
           WEB_IMAGE="ghcr.io/${REPO_LOWER}/stageos-web:${{ inputs.release_tag }}"
+          API_STAGING="ghcr.io/${REPO_LOWER}/stageos-api:staging"
+          WEB_STAGING="ghcr.io/${REPO_LOWER}/stageos-web:staging"
           echo "api_image_uri=${API_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "web_image_uri=${WEB_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "api_staging_tag=${API_STAGING}" >> "$GITHUB_OUTPUT"
+          echo "web_staging_tag=${WEB_STAGING}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push API image
         uses: docker/build-push-action@v6
@@ -63,7 +67,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.api_image_uri }}
-            ghcr.io/${{ github.repository }}/stageos-api:staging
+            ${{ steps.meta.outputs.api_staging_tag }}
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -73,7 +77,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.web_image_uri }}
-            ghcr.io/${{ github.repository }}/stageos-web:staging
+            ${{ steps.meta.outputs.web_staging_tag }}
 
   deploy:
     runs-on: ubuntu-latest

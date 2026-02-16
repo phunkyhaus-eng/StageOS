@@ -17,6 +17,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Compute image tags
+        id: meta
+        run: |
+          REPO_LOWER="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          echo "api_staging=ghcr.io/${REPO_LOWER}/stageos-api:staging" >> "$GITHUB_OUTPUT"
+          echo "api_sha=ghcr.io/${REPO_LOWER}/stageos-api:staging-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "web_staging=ghcr.io/${REPO_LOWER}/stageos-web:staging" >> "$GITHUB_OUTPUT"
+          echo "web_sha=ghcr.io/${REPO_LOWER}/stageos-web:staging-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -34,8 +43,8 @@ jobs:
           file: apps/api/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/stageos-api:staging
-            ghcr.io/${{ github.repository }}/stageos-api:staging-${{ github.sha }}
+            ${{ steps.meta.outputs.api_staging }}
+            ${{ steps.meta.outputs.api_sha }}
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -44,5 +53,5 @@ jobs:
           file: apps/web/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/stageos-web:staging
-            ghcr.io/${{ github.repository }}/stageos-web:staging-${{ github.sha }}
+            ${{ steps.meta.outputs.web_staging }}
+            ${{ steps.meta.outputs.web_sha }}

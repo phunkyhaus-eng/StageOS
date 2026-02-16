@@ -113,10 +113,29 @@ if [ "${#missing[@]}" -gt 0 ]; then
 fi
 
 invalid=()
+invalid_format=()
 for key in "${required_vars[@]}"; do
   value="${!key}"
   if [[ "$value" == *"REPLACE_ME"* ]] || [[ "$value" == *"example"* ]]; then
     invalid+=("$key")
+  fi
+
+  if [ "$key" = "AWS_DEPLOY_ROLE_ARN" ]; then
+    if [[ ! "$value" =~ ^arn:aws(-[a-z0-9]+)?:iam::[0-9]{12}:role/.+ ]]; then
+      invalid_format+=("$key")
+    fi
+  fi
+
+  if [ "$key" = "DATABASE_URL" ]; then
+    if [[ ! "$value" =~ ^postgres(ql)?:// ]]; then
+      invalid_format+=("$key")
+    fi
+  fi
+
+  if [ "$key" = "STAGING_WEB_BASE_URL" ] || [ "$key" = "STAGING_API_BASE_URL" ]; then
+    if [[ ! "$value" =~ ^https?:// ]]; then
+      invalid_format+=("$key")
+    fi
   fi
 done
 
@@ -126,6 +145,21 @@ if [ "${#invalid[@]}" -gt 0 ]; then
     echo "- $key"
   done
   echo "Update $secrets_file with real values and run again."
+  exit 1
+fi
+
+if [ "${#invalid_format[@]}" -gt 0 ]; then
+  echo "These keys have invalid format:"
+  for key in "${invalid_format[@]}"; do
+    if [ "$key" = "AWS_DEPLOY_ROLE_ARN" ]; then
+      echo "- $key (expected full IAM role ARN like arn:aws:iam::123456789012:role/role-name)"
+    elif [ "$key" = "DATABASE_URL" ]; then
+      echo "- $key (expected postgres:// or postgresql:// URL)"
+    else
+      echo "- $key (expected http:// or https:// URL)"
+    fi
+  done
+  echo "Update $secrets_file and run again."
   exit 1
 fi
 
