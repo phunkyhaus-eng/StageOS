@@ -1,0 +1,55 @@
+name: Staging Preflight
+
+on:
+  workflow_dispatch:
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required staging secrets
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+          ECS_API_SERVICE_NAME: ${{ secrets.ECS_API_SERVICE_NAME }}
+          ECS_WEB_SERVICE_NAME: ${{ secrets.ECS_WEB_SERVICE_NAME }}
+          ECS_WORKER_SERVICE_NAME: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
+          STAGING_WEB_BASE_URL: ${{ secrets.STAGING_WEB_BASE_URL }}
+          STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+        run: |
+          ./tools/check_required_env.sh \
+            DATABASE_URL AWS_REGION AWS_DEPLOY_ROLE_ARN ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME STAGING_WEB_BASE_URL STAGING_API_BASE_URL
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Verify ECS services
+        env:
+          CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+          API_SERVICE: ${{ secrets.ECS_API_SERVICE_NAME }}
+          WEB_SERVICE: ${{ secrets.ECS_WEB_SERVICE_NAME }}
+          WORKER_SERVICE: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
+        run: |
+          aws ecs describe-services \
+            --cluster "$CLUSTER_NAME" \
+            --services "$API_SERVICE" "$WEB_SERVICE" "$WORKER_SERVICE" \
+            --query 'services[*].{name:serviceName,status:status,taskDefinition:taskDefinition}' \
+            --output table
+
+      - name: Verify endpoint reachability
+        env:
+          WEB_BASE_URL: ${{ secrets.STAGING_WEB_BASE_URL }}
+          API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+        run: ./tools/smoke_check.sh

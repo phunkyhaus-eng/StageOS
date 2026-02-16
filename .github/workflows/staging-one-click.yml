@@ -1,0 +1,181 @@
+name: Staging One-Click Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag (for example 2026-02-16.1)
+        required: true
+        type: string
+      run_migrations:
+        description: Run Prisma migrations before ECS rollout
+        required: true
+        default: true
+        type: boolean
+      run_smoke_checks:
+        description: Run post-deploy smoke checks
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: staging-one-click
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      api_image_uri: ${{ steps.meta.outputs.api_image_uri }}
+      web_image_uri: ${{ steps.meta.outputs.web_image_uri }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image URIs
+        id: meta
+        run: |
+          REPO_LOWER="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          API_IMAGE="ghcr.io/${REPO_LOWER}/stageos-api:${{ inputs.release_tag }}"
+          WEB_IMAGE="ghcr.io/${REPO_LOWER}/stageos-web:${{ inputs.release_tag }}"
+          echo "api_image_uri=${API_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "web_image_uri=${WEB_IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.api_image_uri }}
+            ghcr.io/${{ github.repository }}/stageos-api:staging
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.web_image_uri }}
+            ghcr.io/${{ github.repository }}/stageos-web:staging
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-push
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate staging deployment secrets
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ECS_CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+          ECS_API_SERVICE_NAME: ${{ secrets.ECS_API_SERVICE_NAME }}
+          ECS_WEB_SERVICE_NAME: ${{ secrets.ECS_WEB_SERVICE_NAME }}
+          ECS_WORKER_SERVICE_NAME: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STAGING_WEB_BASE_URL: ${{ secrets.STAGING_WEB_BASE_URL }}
+          STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+        run: |
+          if [ "${{ inputs.run_migrations }}" = "true" ] && [ "${{ inputs.run_smoke_checks }}" = "true" ]; then
+            ./tools/check_required_env.sh \
+              AWS_DEPLOY_ROLE_ARN AWS_REGION ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME DATABASE_URL STAGING_WEB_BASE_URL STAGING_API_BASE_URL
+          elif [ "${{ inputs.run_migrations }}" = "true" ]; then
+            ./tools/check_required_env.sh \
+              AWS_DEPLOY_ROLE_ARN AWS_REGION ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME DATABASE_URL
+          elif [ "${{ inputs.run_smoke_checks }}" = "true" ]; then
+            ./tools/check_required_env.sh \
+              AWS_DEPLOY_ROLE_ARN AWS_REGION ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME STAGING_WEB_BASE_URL STAGING_API_BASE_URL
+          else
+            ./tools/check_required_env.sh \
+              AWS_DEPLOY_ROLE_ARN AWS_REGION ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup pnpm
+        if: ${{ inputs.run_migrations }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        if: ${{ inputs.run_migrations }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        if: ${{ inputs.run_migrations }}
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Run database migrations
+        if: ${{ inputs.run_migrations }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: corepack pnpm --filter @stageos/api exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Roll ECS services
+        env:
+          CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+          API_SERVICE: ${{ secrets.ECS_API_SERVICE_NAME }}
+          WEB_SERVICE: ${{ secrets.ECS_WEB_SERVICE_NAME }}
+          WORKER_SERVICE: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
+          API_IMAGE_URI: ${{ needs.build-and-push.outputs.api_image_uri }}
+          WEB_IMAGE_URI: ${{ needs.build-and-push.outputs.web_image_uri }}
+        run: ./tools/ecs_rollout.sh
+
+      - name: Smoke checks
+        if: ${{ inputs.run_smoke_checks }}
+        env:
+          WEB_BASE_URL: ${{ secrets.STAGING_WEB_BASE_URL }}
+          API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+        run: ./tools/smoke_check.sh
+
+      - name: Post-deploy ECS status
+        env:
+          CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
+          API_SERVICE: ${{ secrets.ECS_API_SERVICE_NAME }}
+          WEB_SERVICE: ${{ secrets.ECS_WEB_SERVICE_NAME }}
+          WORKER_SERVICE: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
+        run: |
+          aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$API_SERVICE" "$WEB_SERVICE" "$WORKER_SERVICE" \
+            --query 'services[*].{name:serviceName,status:status,desired:desiredCount,running:runningCount}' --output table
+
+      - name: Summary
+        run: |
+          {
+            echo "## Staging one-click release complete"
+            echo ""
+            echo "- API image: \`${{ needs.build-and-push.outputs.api_image_uri }}\`"
+            echo "- Web image: \`${{ needs.build-and-push.outputs.web_image_uri }}\`"
+            echo "- Migrations executed: \`${{ inputs.run_migrations }}\`"
+            echo "- Smoke checks executed: \`${{ inputs.run_smoke_checks }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

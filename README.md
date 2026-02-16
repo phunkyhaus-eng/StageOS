@@ -1,90 +1,135 @@
-# StageOS Monorepo
+# StageOS
 
-StageOS is a production-oriented SaaS for band managers and touring acts with offline-first sync, event dossiers, finance workflows, and multi-tenant security controls.
+Production-ready SaaS operating system for professional bands, touring acts, and managers.
 
-## StageOS Signal Lab app
+StageOS is built as an offline-first, multi-tenant platform centered on the **Event Dossier** and ships with:
 
-The deployable StageOS Signal Lab survey app in this workspace is located at `apps/web`.
-Setup and deployment instructions are in `apps/web/README.md`.
+- Event operations (roster, timeline, setlists, notes, files, travel, settlement)
+- Booking CRM pipeline and availability workflow with conflict detection
+- Finance module (invoices, expenses, payouts, exports, profit analytics)
+- File hub with S3-compatible storage, version tracking, and signed URLs
+- Tour routing with profitability scoring
+- Stripe subscription engine with tier gating and usage metering
+- RBAC + 2FA + device sessions + immutable audit logs
+- Analytics aggregation layer and diagnostics dashboard
+- Plugin framework with hook execution sandboxing
+- White-label branding profiles per organisation
+- Web PWA + mobile (Expo) with shared offline business logic
 
-## Stack
+## Monorepo structure
 
-- `apps/api`: NestJS + Prisma + PostgreSQL + Redis + BullMQ + S3 (MinIO local)
-- `apps/web`: Next.js (App Router) + TypeScript + TailwindCSS + Supabase JS client
-- `apps/mobile`: Expo React Native + SQLite offline store + background sync tasks
-- `packages/shared`: shared Zod schemas + inferred types
-- `tools/webhook-consumer`: sample webhook consumer
+```text
+stageOS/
+├─ apps/
+│  ├─ api/                  # NestJS API, Prisma schema/migrations, queues, auth, billing
+│  ├─ web/                  # Next.js App Router frontend + PWA
+│  └─ mobile/               # Expo app (React Native) + SQLite sync queue
+├─ packages/
+│  └─ shared/               # Shared schemas + offline conflict/merge utilities
+├─ .github/workflows/       # CI + staging image publish + production image publish
+├─ deploy/                  # Provider manifests (Railway, Fly.io, Render, ECS)
+├─ docker-compose.yml       # Local full stack (db, redis, object storage, api, worker, web)
+└─ tools/                   # Repo checks/utilities
+```
 
-## Quick start (Docker)
+Full tree reference: `docs/FOLDER_STRUCTURE.md`
 
-1. Copy env:
+## Tech stack
+
+- Frontend: Next.js, TypeScript, TailwindCSS, React Query, Zustand, PWA
+- Mobile: Expo React Native + shared TypeScript business logic
+- Backend: NestJS, Prisma, PostgreSQL, Redis, BullMQ, S3-compatible object storage
+- Infra: Docker, Docker Compose, GitHub Actions
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+corepack pnpm install
+```
+
+2. Create env file:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Build and run:
+3. Start infrastructure and apps:
 
 ```bash
 docker compose up --build
 ```
 
-3. API docs: `http://localhost:4000/docs`
-4. Metrics: `http://localhost:4000/metrics`
-5. Web app: `http://localhost:3000`
-6. MinIO console: `http://localhost:9001` (`minio` / `minio123`)
-
-## Local (without Docker)
+4. Run migrations and seed data (new terminal):
 
 ```bash
-pnpm install
-pnpm db:migrate
-pnpm db:seed
-pnpm dev
+corepack pnpm db:migrate
+corepack pnpm db:seed
 ```
 
-## Seeded credentials
+## Local URLs
 
-- Owner: `owner@stageos.local` / `Passw0rd!`
-- Manager: `manager@stageos.local` / `Passw0rd!`
-- Accountant: `accountant@stageos.local` / `Passw0rd!`
+- Web: `http://localhost:3000`
+- API: `http://localhost:4000/api`
+- Swagger docs: `http://localhost:4000/docs`
+- Prometheus metrics: `http://localhost:4000/metrics`
+- MinIO console: `http://localhost:9001` (`minio` / `minio123`)
 
-## Env variables
+## Key commands
 
-See `.env.example`. Key values:
+```bash
+# dev
+corepack pnpm dev
+corepack pnpm dev:worker
 
-- `DATABASE_URL` Postgres connection string
-- `REDIS_URL` Redis connection
-- `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`
-- `S3_*` MinIO/AWS credentials and bucket settings
-- `NEXT_PUBLIC_API_URL` API URL for web app
+# quality gates
+corepack pnpm lint
+corepack pnpm typecheck
+corepack pnpm test:unit
+corepack pnpm test:integration
+corepack pnpm test:e2e
+
+# build
+corepack pnpm build
+```
+
+## CI/CD
+
+- `CI` workflow:
+  - lint + typecheck
+  - API unit/integration tests
+  - Playwright e2e tests
+  - Docker image build validation
+- `Deploy Staging` workflow:
+  - builds and pushes `stageos-api` + `stageos-web` images to GHCR with staging tags
+- `Deploy Production` workflow:
+  - manual release image publish to GHCR with production/release tags
+- `Deploy Database Migrations` workflow:
+  - one-click `prisma migrate deploy` for staging/production
+- `Release Gates` workflow:
+  - quality checks + migration readiness + container vuln scanning + terraform validation
+- `Deploy ECS` workflow:
+  - optional migration run + rolling ECS deployment for API/web/worker
+- `Staging One-Click Release` workflow:
+  - build/push staging images + optional migrations + ECS rollout + optional smoke checks
+- `Staging Preflight` workflow:
+  - validates staging secrets + ECS targets + endpoint reachability before release
 
 ## Deployment
 
-### Option A: Vercel + Railway
+Deployment runbooks for Railway, Fly.io, Render, and AWS ECS are in:
 
-- Deploy `apps/web` to Vercel.
-- Deploy `apps/api` to Railway.
-- Provision managed Postgres + Redis on Railway.
-- Set `NEXT_PUBLIC_API_URL` to Railway API domain, and API `APP_URL` to Vercel domain.
+- `docs/DEPLOYMENT.md`
+- `docs/RELEASE_CHECKLIST.md`
+- `docs/GITHUB_ENVIRONMENTS.md`
 
-### Option B: AWS ECS
+## Security and compliance highlights
 
-- Build API and Web images and push to ECR.
-- Run services on ECS Fargate behind ALB.
-- Use RDS Postgres + ElastiCache Redis + S3.
-- Configure Secrets Manager for runtime env vars.
-
-## Core security and compliance controls
-
-- Organisation-scoped access enforced in services and guards.
-- Soft delete + retention purge job (`retentionDays`, default 90).
-- API keys stored hashed and shown once.
-- Audit logs avoid secret/token persistence.
-- Export/delete endpoints for GDPR/UK operations.
-
-## Notes
-
-- External integrations (DocuSign, Stripe, Google OAuth) are scaffolded with clean extension points.
-- PDF generation uses `pdf-lib` (Docker-friendly, no browser deps).
-- Offline-first behaviour implemented in mobile sync engine and web PWA cache for key pages.
+- JWT auth + refresh rotation + TOTP 2FA
+- RBAC permission middleware across modules
+- Financial field encryption
+- Immutable audit log records
+- Signed URL file access and upload scan policy
+- GDPR export and account deletion workflow
+- Retention and backup policy endpoints

@@ -1,0 +1,57 @@
+name: Deploy Database Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: Target environment
+        type: choice
+        options:
+          - staging
+          - production
+        required: true
+
+concurrency:
+  group: migrate-${{ github.event.inputs.target_env }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target_env }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate migration secrets
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: ./tools/check_required_env.sh DATABASE_URL
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Prisma migration status
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: corepack pnpm --filter @stageos/api exec prisma migrate status --schema prisma/schema.prisma
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: corepack pnpm --filter @stageos/api exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Regenerate Prisma client
+        run: corepack pnpm --filter @stageos/api prisma:generate
