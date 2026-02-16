@@ -87,12 +87,14 @@ One-click option in GitHub Actions:
 Fastest staging path:
 
 - Run `.github/workflows/staging-one-click.yml`
-- It builds and pushes images, optionally runs migrations, deploys ECS services, and can run smoke checks
+- Default provider is `render`: it builds and pushes images, optionally runs migrations, triggers Render deploy hooks, and can run smoke checks
+- For AWS ECS, set workflow input `provider=aws`
 
 Recommended before first staging cut:
 
 - Run `.github/workflows/staging-preflight.yml`
-- Confirms required staging secrets, ECS service targets, and endpoint reachability
+- Default provider is `render`: confirms required Render hook secrets and endpoint reachability
+- For AWS ECS, set workflow input `provider=aws`
 
 ## Railway
 

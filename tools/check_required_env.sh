@@ -33,6 +33,12 @@ for var_name in "$@"; do
       invalid_format+=("$var_name")
     fi
   fi
+
+  if [[ "$var_name" =~ ^RENDER_.*_DEPLOY_HOOK_URL$ ]]; then
+    if [[ ! "$value" =~ ^https?:// ]]; then
+      invalid_format+=("$var_name")
+    fi
+  fi
 done
 
 if [ "${#missing[@]}" -gt 0 ]; then
@@ -50,6 +56,8 @@ if [ "${#invalid_format[@]}" -gt 0 ]; then
       echo "- ${name} (expected full IAM role ARN like arn:aws:iam::123456789012:role/role-name)"
     elif [ "$name" = "DATABASE_URL" ]; then
       echo "- ${name} (expected postgres:// or postgresql:// URL)"
+    elif [[ "$name" =~ ^RENDER_.*_DEPLOY_HOOK_URL$ ]]; then
+      echo "- ${name} (expected https:// Render deploy hook URL)"
     else
       echo "- ${name} (expected http:// or https:// URL)"
     fi

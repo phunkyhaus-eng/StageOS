@@ -2,6 +2,20 @@ name: Staging Preflight
 
 on:
   workflow_dispatch:
+    inputs:
+      provider:
+        description: Deployment provider
+        required: true
+        default: render
+        type: choice
+        options:
+          - render
+          - aws
+      verify_endpoints:
+        description: Run endpoint reachability checks
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   preflight:
@@ -23,19 +37,29 @@ jobs:
           ECS_API_SERVICE_NAME: ${{ secrets.ECS_API_SERVICE_NAME }}
           ECS_WEB_SERVICE_NAME: ${{ secrets.ECS_WEB_SERVICE_NAME }}
           ECS_WORKER_SERVICE_NAME: ${{ secrets.ECS_WORKER_SERVICE_NAME }}
+          RENDER_API_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
+          RENDER_WEB_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL }}
+          RENDER_WORKER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WORKER_DEPLOY_HOOK_URL }}
           STAGING_WEB_BASE_URL: ${{ secrets.STAGING_WEB_BASE_URL }}
           STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
         run: |
-          ./tools/check_required_env.sh \
-            DATABASE_URL AWS_REGION AWS_DEPLOY_ROLE_ARN ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME STAGING_WEB_BASE_URL STAGING_API_BASE_URL
+          if [ "${{ inputs.provider }}" = "aws" ]; then
+            ./tools/check_required_env.sh \
+              DATABASE_URL AWS_REGION AWS_DEPLOY_ROLE_ARN ECS_CLUSTER_NAME ECS_API_SERVICE_NAME ECS_WEB_SERVICE_NAME ECS_WORKER_SERVICE_NAME STAGING_WEB_BASE_URL STAGING_API_BASE_URL
+          else
+            ./tools/check_required_env.sh \
+              DATABASE_URL RENDER_API_DEPLOY_HOOK_URL RENDER_WEB_DEPLOY_HOOK_URL STAGING_WEB_BASE_URL STAGING_API_BASE_URL
+          fi
 
       - name: Configure AWS credentials
+        if: ${{ inputs.provider == 'aws' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Verify ECS services
+        if: ${{ inputs.provider == 'aws' }}
         env:
           CLUSTER_NAME: ${{ secrets.ECS_CLUSTER_NAME }}
           API_SERVICE: ${{ secrets.ECS_API_SERVICE_NAME }}
@@ -49,6 +73,7 @@ jobs:
             --output table
 
       - name: Verify endpoint reachability
+        if: ${{ inputs.verify_endpoints }}
         env:
           WEB_BASE_URL: ${{ secrets.STAGING_WEB_BASE_URL }}
           API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}

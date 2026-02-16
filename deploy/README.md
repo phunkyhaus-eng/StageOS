@@ -23,6 +23,7 @@ Use the environment variable contract in:
 Deployment helper scripts:
 
 - `/tools/ecs_rollout.sh`
+- `/tools/render_rollout.sh`
 - `/tools/smoke_check.sh`
 - `/tools/check_required_env.sh`
 - `/tools/set_github_env_secrets.sh`

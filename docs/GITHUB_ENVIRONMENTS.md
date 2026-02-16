@@ -15,17 +15,32 @@ Recommended protection rules:
 
 Set these as **environment secrets** for both `staging` and `production` unless marked optional.
 
+### Common
+
 | Secret | Required by | Description |
 | --- | --- | --- |
-| `DATABASE_URL` | `migrate-database.yml`, `release-gates.yml`, `deploy-ecs.yml` (when `run_migrations=true`) | Target Postgres connection string for Prisma migrate. |
-| `AWS_REGION` | `deploy-ecs.yml` | AWS region (for example `us-east-1`). |
-| `AWS_DEPLOY_ROLE_ARN` | `deploy-ecs.yml` | IAM role ARN for GitHub OIDC deployment auth. |
-| `ECS_CLUSTER_NAME` | `deploy-ecs.yml` | ECS cluster name to deploy into. |
-| `ECS_API_SERVICE_NAME` | `deploy-ecs.yml` | ECS service name for StageOS API. |
-| `ECS_WEB_SERVICE_NAME` | `deploy-ecs.yml` | ECS service name for StageOS web app. |
-| `ECS_WORKER_SERVICE_NAME` | `deploy-ecs.yml` | ECS service name for StageOS worker. |
-| `STAGING_WEB_BASE_URL` | `staging-one-click.yml` (optional if smoke checks enabled) | Staging web URL (for example `https://staging.stageos.app`). |
-| `STAGING_API_BASE_URL` | `staging-one-click.yml` (optional if smoke checks enabled) | Staging API base URL (for example `https://api-staging.stageos.app`). |
+| `DATABASE_URL` | `migrate-database.yml`, `release-gates.yml`, `staging-one-click.yml` (when `run_migrations=true`) | Target Postgres connection string for Prisma migrate. |
+| `STAGING_WEB_BASE_URL` | `staging-preflight.yml`, `staging-one-click.yml` (when `run_smoke_checks=true`) | Staging web URL (for example `https://staging.stageos.app`). |
+| `STAGING_API_BASE_URL` | `staging-preflight.yml`, `staging-one-click.yml` (when `run_smoke_checks=true`) | Staging API base URL (for example `https://api-staging.stageos.app`). |
+
+### Render profile
+
+| Secret | Required by | Description |
+| --- | --- | --- |
+| `RENDER_API_DEPLOY_HOOK_URL` | `staging-preflight.yml`, `staging-one-click.yml` (`provider=render`) | Render deploy hook URL for API service. |
+| `RENDER_WEB_DEPLOY_HOOK_URL` | `staging-preflight.yml`, `staging-one-click.yml` (`provider=render`) | Render deploy hook URL for web service. |
+| `RENDER_WORKER_DEPLOY_HOOK_URL` | `staging-one-click.yml` (`provider=render`, `trigger_worker=true`) | Render deploy hook URL for worker service. |
+
+### AWS ECS profile
+
+| Secret | Required by | Description |
+| --- | --- | --- |
+| `AWS_REGION` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | AWS region (for example `us-east-1`). |
+| `AWS_DEPLOY_ROLE_ARN` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | IAM role ARN for GitHub OIDC deployment auth. |
+| `ECS_CLUSTER_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS cluster name to deploy into. |
+| `ECS_API_SERVICE_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS service name for StageOS API. |
+| `ECS_WEB_SERVICE_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS service name for StageOS web app. |
+| `ECS_WORKER_SERVICE_NAME` | `deploy-ecs.yml`, `staging-one-click.yml` (`provider=aws`) | ECS service name for StageOS worker. |
 
 ## OIDC trust policy baseline
 
@@ -48,12 +63,21 @@ Grant this role least-privilege access for:
 - `migrate-database.yml` -> selected `target_env`
 - `release-gates.yml` -> selected `target_env`
 - `deploy-ecs.yml` -> selected `target_env`
-- `staging-one-click.yml` -> environment `staging`
-- `staging-preflight.yml` -> environment `staging`
+- `staging-one-click.yml` -> environment `staging` (`provider` input, default `render`)
+- `staging-preflight.yml` -> environment `staging` (`provider` input, default `render`)
 
 ## Example values
 
-### staging
+### staging (Render)
+
+- `DATABASE_URL=postgresql://stageos:***@staging-db.example:5432/stageos?schema=public`
+- `RENDER_API_DEPLOY_HOOK_URL=https://api.render.com/deploy/srv-...?...`
+- `RENDER_WEB_DEPLOY_HOOK_URL=https://api.render.com/deploy/srv-...?...`
+- `RENDER_WORKER_DEPLOY_HOOK_URL=https://api.render.com/deploy/srv-...?...`
+- `STAGING_WEB_BASE_URL=https://staging.stageos.app`
+- `STAGING_API_BASE_URL=https://api-staging.stageos.app`
+
+### staging (AWS ECS)
 
 - `DATABASE_URL=postgresql://stageos:***@staging-db.example:5432/stageos?schema=public`
 - `AWS_REGION=us-east-1`
@@ -62,16 +86,6 @@ Grant this role least-privilege access for:
 - `ECS_API_SERVICE_NAME=stageos-staging-api`
 - `ECS_WEB_SERVICE_NAME=stageos-staging-web`
 - `ECS_WORKER_SERVICE_NAME=stageos-staging-worker`
-
-### production
-
-- `DATABASE_URL=postgresql://stageos:***@prod-db.example:5432/stageos?schema=public`
-- `AWS_REGION=us-east-1`
-- `AWS_DEPLOY_ROLE_ARN=arn:aws:iam::<account-id>:role/stageos-production-github-deploy`
-- `ECS_CLUSTER_NAME=stageos-production-cluster`
-- `ECS_API_SERVICE_NAME=stageos-production-api`
-- `ECS_WEB_SERVICE_NAME=stageos-production-web`
-- `ECS_WORKER_SERVICE_NAME=stageos-production-worker`
 
 ## Fast setup with GitHub CLI
 
